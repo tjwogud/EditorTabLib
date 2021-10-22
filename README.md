@@ -48,7 +48,7 @@ public static class Main
         else
         {
             harmony.UnpatchAll(modEntry.Info.Id);
-            CustomTabManager.DeleteTab(501);
+            CustomTabManager.DeleteTab(500);
         }
         return true;
     }
