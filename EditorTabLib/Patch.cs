@@ -153,6 +153,11 @@ namespace EditorTabLib
         {
             public static bool Prefix(InspectorTab __instance, bool selected)
             {
+                if (scnEditor.instance == null)
+                {
+                    Main.Logger.Log("editor null");
+                    return true;
+                }
                 int type = (int)__instance.levelEventType;
                 if (!CustomTabManager.byType.ContainsKey(type))
                     return true;
@@ -160,17 +165,9 @@ namespace EditorTabLib
                 {
                     __instance.eventIndex = 0;
                 }
-                bool flag = false;
-                if (scnEditor.instance.SelectionIsSingle() && !Array.Exists<LevelEventType>(EditorConstants.soloTypes, (LevelEventType t) => t == __instance.levelEventType))
-                {
-                    if (scnEditor.instance.GetSelectedFloorEvents(__instance.levelEventType).Count <= 1)
-                        flag = false;
-                    else
-                        flag = selected;
-                }
-                __instance.cycleButtons.gameObject.SetActive(flag);
+                __instance.cycleButtons.gameObject.SetActive(false);
                 RectTransform component = __instance.GetComponent<RectTransform>();
-                float num = flag ? 120f : 0f;
+                float num = 0f;
                 Vector2 endValue = new Vector2(num, component.sizeDelta.y);
                 component.DOKill(false);
                 component.DOSizeDelta(endValue, 0.05f, false).SetUpdate(true);

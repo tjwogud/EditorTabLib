@@ -12,7 +12,7 @@ namespace EditorTabLib
 {
     public static class Main
     {
-        private static UnityModManager.ModEntry.ModLogger Logger;
+        internal static UnityModManager.ModEntry.ModLogger Logger;
         private static Harmony harmony;
         private static bool IsEnabled = false;
 
