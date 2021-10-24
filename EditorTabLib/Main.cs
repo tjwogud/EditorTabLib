@@ -55,7 +55,6 @@ namespace EditorTabLib
         {
             if (GCS.settingsInfo == null)
                 return;
-            Logger.Log("AddOrDelete " + tab.name + " : " + flag);
             if (flag)
             {
                 GCS.levelEventTypeString[(LevelEventType)tab.type] = tab.name;

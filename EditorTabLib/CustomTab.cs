@@ -42,10 +42,23 @@ namespace EditorTabLib
             list.Add(tab);
             byType.Add(type, tab);
             byName.Add(name, tab);
-            Main.AddOrDeleteAllTabs(true);
-            if (scnEditor.instance == null || scnEditor.instance.settingsPanel == null)
+            Main.AddOrDeleteTab(tab, true);
+            InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
+            if (settingsPanel == null)
                 return;
-            
+            GameObject gameObject = UnityEngine.Object.Instantiate<GameObject>(settingsPanel.gc.prefab_propertiesPanel);
+            gameObject.transform.SetParent(settingsPanel.panels, false);
+            gameObject.name = tab.name;
+            PropertiesPanel component = gameObject.GetComponent<PropertiesPanel>();
+            component.levelEventType = (LevelEventType)tab.type;
+            component.gameObject.SetActive(false);
+            GameObject gameObject2 = UnityEngine.Object.Instantiate<GameObject>(settingsPanel.gc.prefab_tab);
+            gameObject2.transform.SetParent(settingsPanel.tabs, false);
+            InspectorTab component2 = gameObject2.GetComponent<InspectorTab>();
+            component2.Init((LevelEventType)tab.type, settingsPanel);
+            component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * (settingsPanel.tabs.childCount - 1));
+            component2.SetSelected(false);
+            component.Init(settingsPanel, GCS.levelEventsInfo[tab.name]);
         }
 
         public static void DeleteTab(int type)
@@ -55,28 +68,42 @@ namespace EditorTabLib
             list.Remove(tab);
             byType.Remove(tab.type);
             byName.Remove(tab.name);
-            Main.AddOrDeleteAllTabs(false);
-            if (scnEditor.instance == null || scnEditor.instance.settingsPanel == null)
+            Main.AddOrDeleteTab(tab, false);
+            InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
+            if (scnEditor.instance == null || settingsPanel == null)
                 return;
-            List<LevelEventType> types = new List<LevelEventType>();
-            IEnumerator enumerator = scnEditor.instance.settingsPanel.tabs.GetEnumerator();
-            while (enumerator.MoveNext())
+            bool deleted = false;
+            bool firstAfterDelete = true;
+            LevelEventType selectAfterDelete = LevelEventType.SongSettings;
+            for (int i = 0; i < settingsPanel.tabs.childCount; i++)
             {
-                RectTransform rect = (RectTransform)enumerator.Current;
+                RectTransform rect = (RectTransform)settingsPanel.tabs.GetChild(i);
                 InspectorTab component = rect.gameObject.GetComponent<InspectorTab>();
-                if (component?.levelEventType != (LevelEventType)tab.type)
-                    types.Add(component.levelEventType);
+                if (component?.levelEventType == (LevelEventType)tab.type)
+                {
+                    UnityEngine.Object.Destroy(rect.gameObject);
+                    deleted = true;
+                    continue;
+                }
+                if (deleted)
+                {
+                    if (firstAfterDelete)
+                    {
+                        selectAfterDelete = component.levelEventType;
+                        firstAfterDelete = false;
+                    }
+                    rect.AnchorPosY(8f - 68f * (i - 1));
+                }
             }
+            if (settingsPanel.selectedEventType == (LevelEventType)tab.type)
+                settingsPanel.ShowPanel(selectAfterDelete);
         }
 
         public static void DeleteTab(string name)
         {
             if (!byName.TryGetValue(name, out CustomTab tab))
                 return;
-            list.Remove(tab);
-            byType.Remove(tab.type);
-            byName.Remove(tab.name);
-            Main.AddOrDeleteTab(tab, false);
+            DeleteTab(tab.type);
         }
 
         internal class CustomTab
