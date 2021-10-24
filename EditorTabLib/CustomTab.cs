@@ -1,5 +1,7 @@
 ﻿using ADOFAI;
+using HarmonyLib;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -40,7 +42,10 @@ namespace EditorTabLib
             list.Add(tab);
             byType.Add(type, tab);
             byName.Add(name, tab);
-            Main.AddOrDeleteTab(tab, true);
+            Main.AddOrDeleteAllTabs(true);
+            if (scnEditor.instance == null || scnEditor.instance.settingsPanel == null)
+                return;
+            
         }
 
         public static void DeleteTab(int type)
@@ -50,7 +55,18 @@ namespace EditorTabLib
             list.Remove(tab);
             byType.Remove(tab.type);
             byName.Remove(tab.name);
-            Main.AddOrDeleteTab(tab, false);
+            Main.AddOrDeleteAllTabs(false);
+            if (scnEditor.instance == null || scnEditor.instance.settingsPanel == null)
+                return;
+            List<LevelEventType> types = new List<LevelEventType>();
+            IEnumerator enumerator = scnEditor.instance.settingsPanel.tabs.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                RectTransform rect = (RectTransform)enumerator.Current;
+                InspectorTab component = rect.gameObject.GetComponent<InspectorTab>();
+                if (component?.levelEventType != (LevelEventType)tab.type)
+                    types.Add(component.levelEventType);
+            }
         }
 
         public static void DeleteTab(string name)

@@ -55,25 +55,35 @@ namespace EditorTabLib
         {
             if (GCS.settingsInfo == null)
                 return;
-            GCS.levelEventTypeString[(LevelEventType)tab.type] = tab.name;
-            GCS.levelEventsInfo[tab.name] = new LevelEventInfo
+            Logger.Log("AddOrDelete " + tab.name + " : " + flag);
+            if (flag)
             {
-                categories = new List<LevelEventCategory>(),
-                executionTime = LevelEventExecutionTime.Special,
-                name = tab.name,
-                pro = false,
-                propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
-                type = (LevelEventType)tab.type
-            };
-            GCS.levelEventIcons[(LevelEventType)tab.type] = tab.icon;
-            GCS.settingsInfo[tab.name] = new LevelEventInfo
+                GCS.levelEventTypeString[(LevelEventType)tab.type] = tab.name;
+                GCS.levelEventsInfo[tab.name] = new LevelEventInfo
+                {
+                    categories = new List<LevelEventCategory>(),
+                    executionTime = LevelEventExecutionTime.Special,
+                    name = tab.name,
+                    pro = false,
+                    propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
+                    type = (LevelEventType)tab.type
+                };
+                GCS.levelEventIcons[(LevelEventType)tab.type] = tab.icon;
+                GCS.settingsInfo[tab.name] = new LevelEventInfo
+                {
+                    categories = new List<LevelEventCategory>(),
+                    executionTime = LevelEventExecutionTime.Special,
+                    name = tab.name,
+                    propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
+                    type = (LevelEventType)tab.type
+                };
+            } else
             {
-                categories = new List<LevelEventCategory>(),
-                executionTime = LevelEventExecutionTime.Special,
-                name = tab.name,
-                propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
-                type = (LevelEventType)tab.type
-            };
+                GCS.levelEventTypeString.Remove((LevelEventType)tab.type);
+                GCS.levelEventsInfo.Remove(tab.name);
+                GCS.levelEventIcons.Remove((LevelEventType)tab.type);
+                GCS.settingsInfo.Remove(tab.name);
+            }
         }
 
         /*

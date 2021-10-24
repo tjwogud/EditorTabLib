@@ -153,11 +153,6 @@ namespace EditorTabLib
         {
             public static bool Prefix(InspectorTab __instance, bool selected)
             {
-                if (scnEditor.instance == null)
-                {
-                    Main.Logger.Log("editor null");
-                    return true;
-                }
                 int type = (int)__instance.levelEventType;
                 if (!CustomTabManager.byType.ContainsKey(type))
                     return true;
