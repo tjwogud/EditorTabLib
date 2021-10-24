@@ -70,7 +70,7 @@ namespace EditorTabLib
             byName.Remove(tab.name);
             Main.AddOrDeleteTab(tab, false);
             InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
-            if (scnEditor.instance == null || settingsPanel == null)
+            if (settingsPanel == null)
                 return;
             bool deleted = false;
             bool firstAfterDelete = true;

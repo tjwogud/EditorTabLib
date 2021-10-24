@@ -20,8 +20,6 @@ namespace EditorTabLib
         {
             Logger = modEntry.Logger;
             modEntry.OnToggle = OnToggle;
-            //modEntry.OnGUI = OnGUI;
-
         }
 
         private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
@@ -84,11 +82,5 @@ namespace EditorTabLib
                 GCS.settingsInfo.Remove(tab.name);
             }
         }
-
-        /*
-        private static void OnGUI(UnityModManager.ModEntry modEntry)
-        {
-        }
-        */
     }
 }

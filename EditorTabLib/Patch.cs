@@ -10,7 +10,7 @@ using static EditorTabLib.CustomTabManager;
 
 namespace EditorTabLib
 {
-    public static class Patch
+    internal static class Patch
     {
         [HarmonyPatch]
         public static class ParseEnumPatch
@@ -77,22 +77,16 @@ namespace EditorTabLib
                         propertiesPanel = propertiesPanel2;
                     }
                     else
-                    {
                         propertiesPanel2.gameObject.SetActive(false);
-                    }
                 }
                 __instance.title.text = tab.title;
                 LevelEvent levelEvent = new LevelEvent(0, (LevelEventType)tab.type);
                 int num = 1;
 
                 if (propertiesPanel == null)
-                {
                     goto IL_269;
-                }
                 if (levelEvent == null)
-                {
                     goto IL_269;
-                }
                 __instance.selectedEvent = levelEvent;
                 __instance.selectedEventType = levelEvent.eventType;
                 propertiesPanel.SetProperties(levelEvent, true);
@@ -108,14 +102,10 @@ namespace EditorTabLib
                             component.SetSelected(true);
                             component.eventIndex = eventIndex;
                             if (component.cycleButtons != null)
-                            {
                                 component.cycleButtons.text.text = string.Format("{0}/{1}", eventIndex + 1, num);
-                            }
                         }
                         else
-                        {
                             component.SetSelected(false);
-                        }
                     }
                 }
                 goto IL_269;
@@ -157,9 +147,7 @@ namespace EditorTabLib
                 if (!CustomTabManager.byType.ContainsKey(type))
                     return true;
                 if (!selected)
-                {
                     __instance.eventIndex = 0;
-                }
                 __instance.cycleButtons.gameObject.SetActive(false);
                 RectTransform component = __instance.GetComponent<RectTransform>();
                 float num = 0f;

@@ -3,7 +3,7 @@ using System;
 
 namespace EditorTabLib
 {
-    public static class Reflection
+    internal static class Reflection
     {
         public static object Get(this object obj, string name)
         {
