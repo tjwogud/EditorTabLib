@@ -34,6 +34,11 @@ namespace EditorTabLib
             }
         }
 
+        [HarmonyPatch(typeof(scnEditor), "LoadEditorProperties")]
+        public static class LoadPatch
+        {
+        }
+
         [HarmonyPatch(typeof(scnEditor), "Awake")]
         public static class AwakePatch
         {
@@ -41,6 +46,10 @@ namespace EditorTabLib
             {
                 Main.AddOrDeleteAllTabs(true);
                 return true;
+            }
+            public static void Postfix()
+            {
+                CustomTabManager.SortTab();
             }
         }
 

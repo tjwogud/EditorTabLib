@@ -15,6 +15,11 @@ namespace EditorTabLib
 
         public static void AddTab(Sprite icon, int type, string name, string title, Type page)
         {
+            AddTab(icon, type, name, title, page, -1);
+        }
+
+        public static void AddTab(Sprite icon, int type, string name, string title, Type page, int index)
+        {
             if (icon == null)
                 throw new ArgumentNullException("icon cannot be null!");
             if (name == null)
@@ -37,7 +42,8 @@ namespace EditorTabLib
                 type = type,
                 name = name,
                 title = title,
-                page = page
+                page = page,
+                index = index
             };
             list.Add(tab);
             byType.Add(type, tab);
@@ -46,20 +52,44 @@ namespace EditorTabLib
             InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
             if (settingsPanel == null)
                 return;
-            GameObject gameObject = UnityEngine.Object.Instantiate<GameObject>(settingsPanel.gc.prefab_propertiesPanel);
-            gameObject.transform.SetParent(settingsPanel.panels, false);
+            GameObject gameObject = UnityEngine.Object.Instantiate(settingsPanel.gc.prefab_propertiesPanel);
             gameObject.name = tab.name;
             PropertiesPanel component = gameObject.GetComponent<PropertiesPanel>();
             component.levelEventType = (LevelEventType)tab.type;
             component.gameObject.SetActive(false);
-            GameObject gameObject2 = UnityEngine.Object.Instantiate<GameObject>(settingsPanel.gc.prefab_tab);
-            gameObject2.transform.SetParent(settingsPanel.tabs, false);
+            GameObject gameObject2 = UnityEngine.Object.Instantiate(settingsPanel.gc.prefab_tab);
             InspectorTab component2 = gameObject2.GetComponent<InspectorTab>();
             component2.Init((LevelEventType)tab.type, settingsPanel);
-            component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * (settingsPanel.tabs.childCount - 1));
             component2.SetSelected(false);
             lock (GCS.levelEventsInfo)
                 component.Init(settingsPanel, GCS.levelEventsInfo[tab.name]);
+
+            if (index == -1)
+            {
+                component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * (settingsPanel.tabs.childCount - 1));
+                gameObject2.transform.SetParent(settingsPanel.tabs, false);
+            }
+            else
+            {
+                if (settingsPanel.tabs.childCount <= index)
+                    index = settingsPanel.tabs.childCount - 1;
+                List<InspectorTab> tabs = new List<InspectorTab>();
+                for (int i = index; i < settingsPanel.tabs.childCount; i++)
+                {
+                    InspectorTab tab2 = settingsPanel.tabs.GetChild(i).GetComponent<InspectorTab>();
+                    if (tab2 == null || tab2.levelEventType == (LevelEventType)tab.type)
+                        continue;
+                    tabs.Add(tab2);
+                }
+                tabs.ForEach(tab2 => tab2.transform.SetParent(null, false));
+                component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * index);
+                gameObject2.transform.SetParent(settingsPanel.tabs, false);
+                foreach (InspectorTab tab2 in tabs)
+                {
+                    tab2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * ++index);
+                    tab2.transform.SetParent(settingsPanel.tabs, false);
+                }
+            }
         }
 
         public static void DeleteTab(int type)
@@ -107,6 +137,47 @@ namespace EditorTabLib
             DeleteTab(tab.type);
         }
 
+        internal static void SortTab()
+        {
+            InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
+            if (settingsPanel == null)
+                return;
+            Dictionary<int, InspectorTab> dict = new Dictionary<int, InspectorTab>();
+            List<InspectorTab> tabs = new List<InspectorTab>();
+            for (int i = 0; i < settingsPanel.tabs.childCount; i++) {
+                InspectorTab tab = settingsPanel.tabs.GetChild(i).GetComponent<InspectorTab>();
+                if (tab == null)
+                    continue;
+                if (byType.ContainsKey((int)tab.levelEventType))
+                {
+                    dict.Add((int)tab.levelEventType, tab);
+                    continue;
+                }
+                tabs.Add(tab);
+            }
+            settingsPanel.tabs.DetachChildren();
+            foreach (CustomTab tab in list)
+            {
+                if (!dict.TryGetValue(tab.type, out InspectorTab component))
+                {
+                    GameObject gameObject = UnityEngine.Object.Instantiate(settingsPanel.gc.prefab_tab);
+                    component = gameObject.GetComponent<InspectorTab>();
+                    component.Init((LevelEventType)tab.type, settingsPanel);
+                    component.SetSelected(false);
+                }
+                if (tab.index == -1 || tab.index >= tabs.Count)
+                    tabs.Add(component);
+                else
+                    tabs.Insert(tab.index, component);
+            }
+            for (int i = 0; i < tabs.Count; i++)
+            {
+                InspectorTab tab = tabs[i];
+                tab.GetComponent<RectTransform>().AnchorPosY(8f - 68f * i);
+                tab.gameObject.transform.SetParent(settingsPanel.tabs, false);
+            }
+        }
+
         internal class CustomTab
         {
 
@@ -115,7 +186,7 @@ namespace EditorTabLib
             public string name;
             public string title;
             public Type page;
-
+            public int index;
             internal CustomTab()
             {
             }
