@@ -56,15 +56,16 @@ namespace EditorTabLib
             if (flag)
             {
                 GCS.levelEventTypeString[(LevelEventType)tab.type] = tab.name;
-                GCS.levelEventsInfo[tab.name] = new LevelEventInfo
-                {
-                    categories = new List<LevelEventCategory>(),
-                    executionTime = LevelEventExecutionTime.Special,
-                    name = tab.name,
-                    pro = false,
-                    propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
-                    type = (LevelEventType)tab.type
-                };
+                lock (GCS.levelEventsInfo)
+                    GCS.levelEventsInfo[tab.name] = new LevelEventInfo
+                    {
+                        categories = new List<LevelEventCategory>(),
+                        executionTime = LevelEventExecutionTime.Special,
+                        name = tab.name,
+                        pro = false,
+                        propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
+                        type = (LevelEventType)tab.type
+                    };
                 GCS.levelEventIcons[(LevelEventType)tab.type] = tab.icon;
                 GCS.settingsInfo[tab.name] = new LevelEventInfo
                 {
@@ -77,7 +78,8 @@ namespace EditorTabLib
             } else
             {
                 GCS.levelEventTypeString.Remove((LevelEventType)tab.type);
-                GCS.levelEventsInfo.Remove(tab.name);
+                lock (GCS.levelEventsInfo)
+                    GCS.levelEventsInfo.Remove(tab.name);
                 GCS.levelEventIcons.Remove((LevelEventType)tab.type);
                 GCS.settingsInfo.Remove(tab.name);
             }

@@ -58,7 +58,8 @@ namespace EditorTabLib
             component2.Init((LevelEventType)tab.type, settingsPanel);
             component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * (settingsPanel.tabs.childCount - 1));
             component2.SetSelected(false);
-            component.Init(settingsPanel, GCS.levelEventsInfo[tab.name]);
+            lock (GCS.levelEventsInfo)
+                component.Init(settingsPanel, GCS.levelEventsInfo[tab.name]);
         }
 
         public static void DeleteTab(int type)
