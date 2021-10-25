@@ -23,6 +23,8 @@ public static class Main
         Logger = modEntry.Logger;
         modEntry.OnToggle = OnToggle;
         modEntry.OnUpdate = OnUpdate;
+
+        // 이미지를 Sprite로 불러옴
         string path = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "TestMod", "test.png");
         Texture2D Tex2D;
         byte[] FileData;
@@ -33,7 +35,6 @@ public static class Main
             if (Tex2D.LoadImage(FileData))
                 icon = Sprite.Create(Tex2D, new Rect(0, 0, Tex2D.width, Tex2D.height), new Vector2(0.5f, 0.5f));
         }
-
     }
 
     private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
