@@ -4,6 +4,8 @@
 ## 사용법
 ```cs
 CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, string title, Type pageType)
+// 1.2.0 이후부터
+CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, string title, Type pageType, int index)
 CustomTabManager.DeleteTab(int levelEventType)
 CustomTabManager.DeleteTab(string eventName)
 ```
