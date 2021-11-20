@@ -67,7 +67,7 @@ public class TestPage : MonoBehaviour
         testLabel = new GameObject().AddComponent<Text>();
         testLabel.transform.SetParent(base.transform, false);
         testLabel.color = Color.green;
-        testLabel.font = RDC.data.prefab_property.transform.GetChild(1).GetComponent<Text>().font;
+        testLabel.SetLocalizedFont();
         testLabel.GetOrAddComponent<RectTransform>().sizeDelta = new Vector2(300f, 25f);
         testLabel.fontSize = 19;
         testLabel.text = "테스트";
