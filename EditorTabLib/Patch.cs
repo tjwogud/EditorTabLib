@@ -25,18 +25,13 @@ namespace EditorTabLib
 
             public static bool Prefix(string str, ref LevelEventType __result)
             {
-                if (CustomTabManager.byName.TryGetValue(str, out CustomTab tab))
+                if (byName.TryGetValue(str, out CustomTab tab))
                 {
                     __result = (LevelEventType)tab.type;
                     return false;
                 }
                 return true;
             }
-        }
-
-        [HarmonyPatch(typeof(scnEditor), "LoadEditorProperties")]
-        public static class LoadPatch
-        {
         }
 
         [HarmonyPatch(typeof(scnEditor), "Awake")]
@@ -49,7 +44,7 @@ namespace EditorTabLib
             }
             public static void Postfix()
             {
-                CustomTabManager.SortTab();
+                SortTab();
             }
         }
 
@@ -58,7 +53,7 @@ namespace EditorTabLib
         {
             public static bool Prefix(LevelEventType type, ref bool __result)
             {
-                if (CustomTabManager.byType.ContainsKey((int)type))
+                if (byType.ContainsKey((int)type))
                 {
                     __result = true;
                     return false;
@@ -72,7 +67,7 @@ namespace EditorTabLib
         {
             public static bool Prefix(InspectorPanel __instance, LevelEventType eventType, int eventIndex = 0)
             {
-                if (!CustomTabManager.byType.TryGetValue((int)eventType, out CustomTab tab))
+                if (!byType.TryGetValue((int)eventType, out CustomTab tab))
                     return true;
                 __instance.Set("showingPanel", true);
                 __instance.editor.SaveState(true, false);
@@ -130,7 +125,7 @@ namespace EditorTabLib
         {
             public static bool Prefix(PropertiesPanel __instance, InspectorPanel panel, LevelEventInfo levelEventInfo)
             {
-                if (CustomTabManager.byType.TryGetValue((int)levelEventInfo.type, out CustomTab tab))
+                if (byType.TryGetValue((int)levelEventInfo.type, out CustomTab tab))
                 {
                     __instance.inspectorPanel = panel;
                     VerticalLayoutGroup layoutGroup = __instance.content.GetComponent<VerticalLayoutGroup>();
@@ -153,7 +148,7 @@ namespace EditorTabLib
             public static bool Prefix(InspectorTab __instance, bool selected)
             {
                 int type = (int)__instance.levelEventType;
-                if (!CustomTabManager.byType.ContainsKey(type))
+                if (!byType.ContainsKey(type))
                     return true;
                 if (!selected)
                     __instance.eventIndex = 0;
