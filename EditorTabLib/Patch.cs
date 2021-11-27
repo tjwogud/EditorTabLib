@@ -23,14 +23,28 @@ namespace EditorTabLib
                 });
             }
 
+            public static bool cancelled = true;
+
             public static bool Prefix(string str, ref LevelEventType __result)
             {
                 if (byName.TryGetValue(str, out CustomTab tab))
                 {
                     __result = (LevelEventType)tab.type;
+                    cancelled = false;
                     return false;
                 }
                 return true;
+            }
+
+            public static void Postfix(string str, ref LevelEventType __result)
+            {
+                if (!cancelled)
+                {
+                    cancelled = true;
+                    return;
+                }
+                if (byName.TryGetValue(str, out CustomTab tab))
+                    __result = (LevelEventType)tab.type;
             }
         }
 
@@ -51,24 +65,36 @@ namespace EditorTabLib
         [HarmonyPatch(typeof(EditorConstants), "IsSetting")]
         public static class IsSettingPatch
         {
-            public static bool Prefix(LevelEventType type, ref bool __result)
+            public static void Postfix(LevelEventType type, ref bool __result)
             {
                 if (byType.ContainsKey((int)type))
-                {
                     __result = true;
-                    return false;
-                }
-                return true;
             }
         }
 
         [HarmonyPatch(typeof(InspectorPanel), "ShowPanel")]
         public static class ShowPanelPatch
         {
+            public static bool cancelled = true;
+
             public static bool Prefix(InspectorPanel __instance, LevelEventType eventType, int eventIndex = 0)
             {
                 if (!byType.TryGetValue((int)eventType, out CustomTab tab))
                     return true;
+                Postfix(__instance, eventType, eventIndex);
+                cancelled = false;
+                return false;
+            }
+
+            public static void Postfix(InspectorPanel __instance, LevelEventType eventType, int eventIndex = 0)
+            {
+                if (!byType.TryGetValue((int)eventType, out CustomTab tab))
+                    return;
+                if (!cancelled)
+                {
+                    cancelled = true;
+                    return;
+                }
                 __instance.Set("showingPanel", true);
                 __instance.editor.SaveState(true, false);
                 __instance.editor.changingState++;
@@ -116,14 +142,13 @@ namespace EditorTabLib
             IL_269:
                 __instance.editor.changingState--;
                 __instance.Set("showingPanel", false);
-                return false;
             }
         }
 
         [HarmonyPatch(typeof(PropertiesPanel), "Init")]
         public static class PropertyPanelPatch
         {
-            public static bool Prefix(PropertiesPanel __instance, InspectorPanel panel, LevelEventInfo levelEventInfo)
+            public static void Postfix(PropertiesPanel __instance, InspectorPanel panel, LevelEventInfo levelEventInfo)
             {
                 if (byType.TryGetValue((int)levelEventInfo.type, out CustomTab tab))
                 {
@@ -136,20 +161,18 @@ namespace EditorTabLib
                     layoutGroup.childControlWidth = false;
                     __instance.content.gameObject.GetOrAddComponent<ScrollRect>().movementType = ScrollRect.MovementType.Unrestricted;
                     AccessTools.Method(typeof(GameObject), "AddComponent", null, new Type[] { tab.page }).Invoke(__instance.content.gameObject, null);
-                    return false;
                 }
-                return true;
             }
         }
 
         [HarmonyPatch(typeof(InspectorTab), "SetSelected")]
         public static class SetSelectedPatch
         {
-            public static bool Prefix(InspectorTab __instance, bool selected)
+            public static void Postfix(InspectorTab __instance, bool selected)
             {
                 int type = (int)__instance.levelEventType;
                 if (!byType.ContainsKey(type))
-                    return true;
+                    return;
                 if (!selected)
                     __instance.eventIndex = 0;
                 __instance.cycleButtons.gameObject.SetActive(false);
@@ -169,7 +192,6 @@ namespace EditorTabLib
                 __instance.icon.DOKill(false);
                 float alpha2 = selected ? 1f : 0.6f;
                 __instance.icon.DOColor(Color.white.WithAlpha(alpha2), 0.05f).SetUpdate(true);
-                return false;
             }
         }
     }

@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="cd G:\불얼모드&#xD;&#xA;G:&#xD;&#xA;copy /Y $(TargetDir)$(ProjectName).dll $(ProjectName)\$(ProjectName)\$(ProjectName).dll&#xD;&#xA;del $(ProjectName).zip&#xD;&#xA;cd $(ProjectName)&#xD;&#xA;zip -r G:\불얼모드\$(ProjectName).zip $(ProjectName)&#xD;&#xA;copy /Y G:\불얼모드\$(ProjectName).zip G:\UnityModManager\모드\$(ProjectName).zip" />
+    <Exec Command="$(SolutionDir)build.bat" />
   </Target>
 
   <ItemGroup>

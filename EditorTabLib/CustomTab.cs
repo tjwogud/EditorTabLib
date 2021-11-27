@@ -12,7 +12,6 @@ namespace EditorTabLib
         internal static List<CustomTab> list = new List<CustomTab>();
         internal static Dictionary<int, CustomTab> byType = new Dictionary<int, CustomTab>();
         internal static Dictionary<string, CustomTab> byName = new Dictionary<string, CustomTab>();
-
         public static void AddTab(Sprite icon, int type, string name, string title, Type page)
         {
             AddTab(icon, type, name, title, page, -1);
@@ -66,7 +65,7 @@ namespace EditorTabLib
 
             if (index == -1)
             {
-                component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * (settingsPanel.tabs.childCount - 1));
+                component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * settingsPanel.tabs.childCount);
                 gameObject2.transform.SetParent(settingsPanel.tabs, false);
             }
             else
@@ -144,7 +143,8 @@ namespace EditorTabLib
                 return;
             Dictionary<int, InspectorTab> dict = new Dictionary<int, InspectorTab>();
             List<InspectorTab> tabs = new List<InspectorTab>();
-            for (int i = 0; i < settingsPanel.tabs.childCount; i++) {
+            for (int i = 0; i < settingsPanel.tabs.childCount; i++)
+            {
                 InspectorTab tab = settingsPanel.tabs.GetChild(i).GetComponent<InspectorTab>();
                 if (tab == null)
                     continue;
