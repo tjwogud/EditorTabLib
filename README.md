@@ -4,6 +4,8 @@
 ## 사용법
 ```cs
 CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, string title, Type pageType)
+// 1.2.0 이후부터
+CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, string title, Type pageType, int index)
 CustomTabManager.DeleteTab(int levelEventType)
 CustomTabManager.DeleteTab(string eventName)
 ```
@@ -65,7 +67,7 @@ public class TestPage : MonoBehaviour
         testLabel = new GameObject().AddComponent<Text>();
         testLabel.transform.SetParent(base.transform, false);
         testLabel.color = Color.green;
-        testLabel.font = RDC.data.prefab_property.transform.GetChild(1).GetComponent<Text>().font;
+        testLabel.SetLocalizedFont();
         testLabel.GetOrAddComponent<RectTransform>().sizeDelta = new Vector2(300f, 25f);
         testLabel.fontSize = 19;
         testLabel.text = "테스트";
