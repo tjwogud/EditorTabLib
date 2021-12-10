@@ -3,6 +3,7 @@ using DG.Tweening;
 using HarmonyLib;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
@@ -69,6 +70,16 @@ namespace EditorTabLib
             {
                 if (byType.ContainsKey((int)type))
                     __result = true;
+            }
+        }
+
+        [HarmonyPatch(typeof(scnEditor), "GetSelectedFloorEvents")]
+        public static class GetSelectedFloorEventsPatch
+        {
+            public static void Postfix(LevelEventType eventType, ref List<LevelEvent> __result)
+            {
+                if (byType.ContainsKey((int)eventType) && __result == null)
+                    __result = new List<LevelEvent>();
             }
         }
 
