@@ -1,10 +1,7 @@
 ﻿using ADOFAI;
 using HarmonyLib;
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using UnityEngine;
 using UnityModManagerNet;
 using static EditorTabLib.CustomTabManager;
 
