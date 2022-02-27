@@ -53,7 +53,7 @@ public static class Main
         {
             harmony = new Harmony(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
-            CustomTabManager.AddTab(icon, 500, "TestEvent", "테스트", typeof(TestPage));
+            CustomTabManager.AddTab(icon, 500, "TestEvent", "테스트/Test", typeof(TestPage));
         }
         else
         {
