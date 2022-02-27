@@ -6,10 +6,13 @@ add EditorTabLib to dependency
 ## 사용법 / how to use
 ```cs
 CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, string title, Type pageType)
+
 // 1.2.0 이후부터
 // after 1.2.0
 CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, string title, Type pageType, int index)
+
 CustomTabManager.DeleteTab(int levelEventType)
+
 CustomTabManager.DeleteTab(string eventName)
 ```
 
