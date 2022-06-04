@@ -1,13 +1,16 @@
 ﻿using ADOFAI;
 using DG.Tweening;
+using EditorTabLib.Components;
+using EditorTabLib.Utils;
 using HarmonyLib;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
-using static EditorTabLib.CustomTabManager;
 
 namespace EditorTabLib
 {
@@ -28,7 +31,7 @@ namespace EditorTabLib
 
             public static bool Prefix(string str, ref LevelEventType __result)
             {
-                if (byName.TryGetValue(str, out CustomTab tab))
+                if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
                 {
                     __result = (LevelEventType)tab.type;
                     cancelled = false;
@@ -44,7 +47,7 @@ namespace EditorTabLib
                     cancelled = true;
                     return;
                 }
-                if (byName.TryGetValue(str, out CustomTab tab))
+                if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
                     __result = (LevelEventType)tab.type;
             }
         }
@@ -59,7 +62,7 @@ namespace EditorTabLib
             }
             public static void Postfix()
             {
-                SortTab();
+                CustomTabManager.SortTab();
             }
         }
 
@@ -68,7 +71,7 @@ namespace EditorTabLib
         {
             public static void Postfix(LevelEventType type, ref bool __result)
             {
-                if (byType.ContainsKey((int)type))
+                if (CustomTabManager.byType.ContainsKey((int)type))
                     __result = true;
             }
         }
@@ -78,7 +81,7 @@ namespace EditorTabLib
         {
             public static void Postfix(LevelEventType eventType, ref List<LevelEvent> __result)
             {
-                if (byType.ContainsKey((int)eventType) && __result == null)
+                if (CustomTabManager.byType.ContainsKey((int)eventType) && __result == null)
                     __result = new List<LevelEvent>();
             }
         }
@@ -90,22 +93,20 @@ namespace EditorTabLib
 
             public static bool Prefix(InspectorPanel __instance, LevelEventType eventType, int eventIndex = 0)
             {
-                if (!byType.TryGetValue((int)eventType, out CustomTab tab))
-                    return true;
                 Postfix(__instance, eventType, eventIndex);
                 cancelled = false;
-                return false;
+                return !CustomTabManager.byType.ContainsKey((int)eventType);
             }
 
             public static void Postfix(InspectorPanel __instance, LevelEventType eventType, int eventIndex = 0)
             {
-                if (!byType.TryGetValue((int)eventType, out CustomTab tab))
-                    return;
                 if (!cancelled)
                 {
                     cancelled = true;
                     return;
                 }
+                if (!CustomTabManager.byType.TryGetValue((int)eventType, out CustomTabManager.CustomTab tab))
+                    return;
                 __instance.Set("showingPanel", true);
                 __instance.editor.SaveState(true, false);
                 __instance.editor.changingState++;
@@ -120,7 +121,14 @@ namespace EditorTabLib
                     else
                         propertiesPanel2.gameObject.SetActive(false);
                 }
-                __instance.title.text = tab.title;
+                __instance.title.text =
+                    tab.title.TryGetValue(RDString.language, out string title) ?
+                    title :
+                    (tab.title.TryGetValue(SystemLanguage.English, out title) ?
+                    title :
+                    (tab.title.Values.Count > 0 ?
+                    tab.title.Values.ElementAt(0) :
+                    tab.name));
                 LevelEvent levelEvent = new LevelEvent(0, (LevelEventType)tab.type);
                 int num = 1;
 
@@ -161,7 +169,7 @@ namespace EditorTabLib
         {
             public static void Postfix(PropertiesPanel __instance, InspectorPanel panel, LevelEventInfo levelEventInfo)
             {
-                if (byType.TryGetValue((int)levelEventInfo.type, out CustomTab tab))
+                if (CustomTabManager.byType.TryGetValue((int)levelEventInfo.type, out CustomTabManager.CustomTab tab) && tab.page != null)
                 {
                     __instance.inspectorPanel = panel;
                     VerticalLayoutGroup layoutGroup = __instance.content.GetComponent<VerticalLayoutGroup>();
@@ -171,7 +179,7 @@ namespace EditorTabLib
                     layoutGroup.childControlHeight = false;
                     layoutGroup.childControlWidth = false;
                     __instance.content.gameObject.GetOrAddComponent<ScrollRect>().movementType = ScrollRect.MovementType.Unrestricted;
-                    AccessTools.Method(typeof(GameObject), "AddComponent", null, new Type[] { tab.page }).Invoke(__instance.content.gameObject, null);
+                    __instance.content.gameObject.AddComponent(tab.page).Set("properties", __instance);
                 }
             }
         }
@@ -182,8 +190,14 @@ namespace EditorTabLib
             public static void Postfix(InspectorTab __instance, bool selected)
             {
                 int type = (int)__instance.levelEventType;
-                if (!byType.ContainsKey(type))
+                if (!CustomTabManager.byType.ContainsKey(type))
                     return;
+                RectTransform rect = __instance.panel.panelsList.Find(panel => panel.inspectorPanel == __instance.panel).content;
+                CustomTabBehaviour behaviour = __instance.panel.panelsList.Find(panel => panel.levelEventType == __instance.levelEventType)?.content?.GetComponent<CustomTabBehaviour>();
+                if (selected)
+                    behaviour?.OnFocused();
+                else if (__instance.icon.color.a == 1)
+                    behaviour?.OnUnFocused();
                 if (!selected)
                     __instance.eventIndex = 0;
                 __instance.cycleButtons.gameObject.SetActive(false);
@@ -193,7 +207,6 @@ namespace EditorTabLib
                 component.DOKill(false);
                 component.DOSizeDelta(endValue, 0.05f, false).SetUpdate(true);
                 float num2 = selected ? 0f : 3f;
-                num2 *= (__instance.Get<bool>("isEventTab") ? -1f : 1f);
                 num2 -= num / 2f;
                 component.DOAnchorPosX(num2, 0.05f, false).SetUpdate(true);
                 float alpha = selected ? 0.7f : 0.45f;
@@ -203,6 +216,39 @@ namespace EditorTabLib
                 __instance.icon.DOKill(false);
                 float alpha2 = selected ? 1f : 0.6f;
                 __instance.icon.DOColor(Color.white.WithAlpha(alpha2), 0.05f).SetUpdate(true);
+            }
+        }
+
+        [HarmonyPatch(typeof(PropertyControl), "Setup")]
+        public static class SetupPatch
+        {
+            public static void Postfix(PropertyControl __instance)
+            {
+                if (!(__instance is PropertyControl_Export instance))
+                    return;
+                if (!(__instance.propertyInfo.value_default is UnityAction action))
+                    return;
+                instance.exportButton.onClick.RemoveAllListeners();
+                instance.exportButton.onClick.AddListener(action);
+                if (instance.propertyInfo.customLocalizationKey == null)
+                {
+                    string str = "editor." + instance.propertyInfo.levelEventInfo.name + "." + instance.propertyInfo.name;
+                    instance.buttonText.text = RDString.GetWithCheck(str, out bool flag, null);
+                    if (!flag)
+                        instance.buttonText.text = RDString.GetWithCheck("editor." + instance.propertyInfo.name, out _, null);
+                }
+                else
+                    instance.buttonText.text = (instance.propertyInfo.customLocalizationKey == "") ? "" : RDString.Get(instance.propertyInfo.customLocalizationKey, null);
+            }
+        }
+
+        [HarmonyPatch(typeof(Property), "info", MethodType.Setter)]
+        public static class SetInfoPatch
+        {
+            public static void Postfix(Property __instance)
+            {
+                if (__instance.info.type == PropertyType.Export)
+                    __instance.label.text = "";
             }
         }
     }

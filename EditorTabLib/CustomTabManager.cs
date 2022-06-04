@@ -1,6 +1,8 @@
 ﻿using ADOFAI;
+using EditorTabLib.Components;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace EditorTabLib
@@ -10,18 +12,74 @@ namespace EditorTabLib
         internal static List<CustomTab> list = new List<CustomTab>();
         internal static Dictionary<int, CustomTab> byType = new Dictionary<int, CustomTab>();
         internal static Dictionary<string, CustomTab> byName = new Dictionary<string, CustomTab>();
-        public static void AddTab(Sprite icon, int type, string name, string title, Type page)
-        {
-            AddTab(icon, type, name, title, page, -1);
-        }
 
-        public static void AddTab(Sprite icon, int type, string name, string title, Type page, int index)
+        public static void AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Properties.Property> properties, int index = -1)
         {
             if (icon == null)
                 throw new ArgumentNullException("icon cannot be null!");
             if (name == null)
                 throw new ArgumentNullException("name cannot be null!");
-            if (page == null)
+            if (properties == null)
+                throw new ArgumentNullException("properties cannot be null!");
+            if (byType.ContainsKey(type))
+                throw new ArgumentException("customtab with type " + type + " already exists!");
+            if (byName.ContainsKey(name))
+                throw new ArgumentException("customtab named " + name + " already exists!");
+            int max = 0;
+            foreach (LevelEventType let in Enum.GetValues(typeof(LevelEventType)))
+                if ((int)let > max)
+                    max = (int)let;
+            if (type <= max)
+                throw new ArgumentException("type must be bigger than " + max);
+            CustomTab tab = new CustomTab
+            {
+                icon = icon,
+                type = type,
+                name = name,
+                title = title,
+                index = index,
+                properties = properties.Select(property => property.ToData()).ToList()
+            };
+            AddTab(tab);
+        }
+
+        public static void AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Dictionary<string, object>> properties, int index = -1)
+        {
+            if (icon == null)
+                throw new ArgumentNullException("icon cannot be null!");
+            if (name == null)
+                throw new ArgumentNullException("name cannot be null!");
+            if (properties == null)
+                throw new ArgumentNullException("properties cannot be null!");
+            if (byType.ContainsKey(type))
+                throw new ArgumentException("customtab with type " + type + " already exists!");
+            if (byName.ContainsKey(name))
+                throw new ArgumentException("customtab named " + name + " already exists!");
+            int max = 0;
+            foreach (LevelEventType let in Enum.GetValues(typeof(LevelEventType)))
+                if ((int)let > max)
+                    max = (int)let;
+            if (type <= max)
+                throw new ArgumentException("type must be bigger than " + max);
+            CustomTab tab = new CustomTab
+            {
+                icon = icon,
+                type = type,
+                name = name,
+                title = title,
+                index = index,
+                properties = properties
+            };
+            AddTab(tab);
+        }
+
+        public static void AddTab<T>(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, int index = -1) where T : CustomTabBehaviour
+        {
+            if (icon == null)
+                throw new ArgumentNullException("icon cannot be null!");
+            if (name == null)
+                throw new ArgumentNullException("name cannot be null!");
+            if (typeof(T) == null)
                 throw new ArgumentNullException("page cannot be null!");
             if (byType.ContainsKey(type))
                 throw new ArgumentException("customtab with type " + type + " already exists!");
@@ -39,12 +97,17 @@ namespace EditorTabLib
                 type = type,
                 name = name,
                 title = title,
-                page = page,
+                page = typeof(T),
                 index = index
             };
+            AddTab(tab);
+        }
+
+        private static void AddTab(CustomTab tab)
+        {
             list.Add(tab);
-            byType.Add(type, tab);
-            byName.Add(name, tab);
+            byType.Add(tab.type, tab);
+            byName.Add(tab.name, tab);
             Main.AddOrDeleteTab(tab, true);
             InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
             if (settingsPanel == null)
@@ -61,17 +124,17 @@ namespace EditorTabLib
             lock (GCS.levelEventsInfo)
                 component.Init(settingsPanel, GCS.levelEventsInfo[tab.name]);
 
-            if (index == -1)
+            if (tab.index == -1)
             {
                 component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * settingsPanel.tabs.childCount);
                 gameObject2.transform.SetParent(settingsPanel.tabs, false);
             }
             else
             {
-                if (settingsPanel.tabs.childCount <= index)
-                    index = settingsPanel.tabs.childCount - 1;
+                if (settingsPanel.tabs.childCount <= tab.index)
+                    tab.index = settingsPanel.tabs.childCount - 1;
                 List<InspectorTab> tabs = new List<InspectorTab>();
-                for (int i = index; i < settingsPanel.tabs.childCount; i++)
+                for (int i = tab.index; i < settingsPanel.tabs.childCount; i++)
                 {
                     InspectorTab tab2 = settingsPanel.tabs.GetChild(i).GetComponent<InspectorTab>();
                     if (tab2 == null || tab2.levelEventType == (LevelEventType)tab.type)
@@ -79,11 +142,11 @@ namespace EditorTabLib
                     tabs.Add(tab2);
                 }
                 tabs.ForEach(tab2 => tab2.transform.SetParent(null, false));
-                component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * index);
+                component2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * tab.index);
                 gameObject2.transform.SetParent(settingsPanel.tabs, false);
                 foreach (InspectorTab tab2 in tabs)
                 {
-                    tab2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * ++index);
+                    tab2.GetComponent<RectTransform>().AnchorPosY(8f - 68f * ++tab.index);
                     tab2.transform.SetParent(settingsPanel.tabs, false);
                 }
             }
@@ -109,7 +172,7 @@ namespace EditorTabLib
                 InspectorTab component = rect.gameObject.GetComponent<InspectorTab>();
                 if (component?.levelEventType == (LevelEventType)tab.type)
                 {
-                    UnityEngine.Object.Destroy(rect.gameObject);
+                    UnityEngine.Object.DestroyImmediate(rect.gameObject);
                     deleted = true;
                     continue;
                 }
@@ -182,9 +245,10 @@ namespace EditorTabLib
             public Sprite icon;
             public int type;
             public string name;
-            public string title;
+            public Dictionary<SystemLanguage, string> title;
             public Type page;
             public int index;
+            public List<Dictionary<string, object>> properties;
             internal CustomTab()
             {
             }
