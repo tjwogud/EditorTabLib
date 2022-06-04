@@ -34,14 +34,12 @@ public static class Main
         // 이미지를 Sprite로 불러옴
         // load image as Sprite
         string path = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "TestMod", "test.png");
-        Texture2D Tex2D;
-        byte[] FileData;
         if (File.Exists(path))
         {
-            FileData = File.ReadAllBytes(path);
-            Tex2D = new Texture2D(0, 0);
-            if (Tex2D.LoadImage(FileData))
-                icon = Sprite.Create(Tex2D, new Rect(0, 0, Tex2D.width, Tex2D.height), new Vector2(0.5f, 0.5f));
+            byte[] FileData = File.ReadAllBytes(path);
+            Texture2D texture = new Texture2D(0, 0);
+            if (texture.LoadImage(FileData))
+                icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
         }
     }
 
