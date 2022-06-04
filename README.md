@@ -36,9 +36,9 @@ public static class Main
         string path = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "TestMod", "test.png");
         if (File.Exists(path))
         {
-            byte[] FileData = File.ReadAllBytes(path);
+            byte[] fileData = File.ReadAllBytes(path);
             Texture2D texture = new Texture2D(0, 0);
-            if (texture.LoadImage(FileData))
+            if (texture.LoadImage(fileData))
                 icon = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
         }
     }
