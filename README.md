@@ -32,7 +32,7 @@ public static class Main
         modEntry.OnUpdate = OnUpdate;
 
         // 이미지를 Sprite로 불러옴
-		// load image as Sprite
+        // load image as Sprite
         string path = Path.Combine(Directory.GetCurrentDirectory(), "Mods", "TestMod", "test.png");
         Texture2D Tex2D;
         byte[] FileData;
