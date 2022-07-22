@@ -16,6 +16,7 @@ namespace EditorTabLib
 {
     internal static class Patches
     {
+        // string을 LevelEventType로 변환할 시 커스텀 탭의 LevelEventType도 리턴
         [HarmonyPatch]
         public static class ParseEnumPatch
         {
@@ -52,6 +53,7 @@ namespace EditorTabLib
             }
         }
 
+        // 에디터에 들어갈 시 모든 탭 추가 후 정렬
         [HarmonyPatch(typeof(scnEditor), "Awake")]
         public static class AwakePatch
         {
@@ -66,6 +68,7 @@ namespace EditorTabLib
             }
         }
 
+        // 커스텀 탭의 LevelEventType이 설정 탭으로 인식되도록 함
         [HarmonyPatch(typeof(EditorConstants), "IsSetting")]
         public static class IsSettingPatch
         {
@@ -76,6 +79,7 @@ namespace EditorTabLib
             }
         }
 
+        // NullReferenceException 방지
         [HarmonyPatch(typeof(scnEditor), "GetSelectedFloorEvents")]
         public static class GetSelectedFloorEventsPatch
         {
@@ -86,6 +90,7 @@ namespace EditorTabLib
             }
         }
 
+        // 패널을 표시할 시 여러 설정
         [HarmonyPatch(typeof(InspectorPanel), "ShowPanel")]
         public static class ShowPanelPatch
         {
@@ -149,6 +154,7 @@ namespace EditorTabLib
             }
         }
 
+        // 탭 내용 추가
         [HarmonyPatch(typeof(PropertiesPanel), "Init")]
         public static class PropertyPanelPatch
         {
@@ -176,6 +182,7 @@ namespace EditorTabLib
             }
         }
 
+        // OnFocused과 OnUnFocused 호출
         [HarmonyPatch(typeof(InspectorTab), "SetSelected")]
         public static class SetSelectedPatch
         {
@@ -184,33 +191,16 @@ namespace EditorTabLib
                 int type = (int)__instance.levelEventType;
                 if (!CustomTabManager.byType.ContainsKey(type))
                     return;
-                RectTransform rect = __instance.panel.panelsList.Find(panel => panel.inspectorPanel == __instance.panel).content;
                 CustomTabBehaviour behaviour = __instance.panel.panelsList.Find(panel => panel.levelEventType == __instance.levelEventType)?.content?.GetComponent<CustomTabBehaviour>();
                 if (selected)
                     behaviour?.OnFocused();
                 else if (__instance.icon.color.a == 1)
                     behaviour?.OnUnFocused();
-                if (!selected)
-                    __instance.eventIndex = 0;
-                __instance.cycleButtons.gameObject.SetActive(false);
-                RectTransform component = __instance.GetComponent<RectTransform>();
-                float num = 0f;
-                Vector2 endValue = new Vector2(num, component.sizeDelta.y);
-                component.DOKill(false);
-                component.DOSizeDelta(endValue, 0.05f, false).SetUpdate(true);
-                float num2 = selected ? 0f : 3f;
-                num2 -= num / 2f;
-                component.DOAnchorPosX(num2, 0.05f, false).SetUpdate(true);
-                float alpha = selected ? 0.7f : 0.45f;
-                ColorBlock colors = __instance.button.colors;
-                colors.normalColor = Color.white.WithAlpha(alpha);
-                __instance.button.colors = colors;
-                __instance.icon.DOKill(false);
-                float alpha2 = selected ? 1f : 0.6f;
-                __instance.icon.DOColor(Color.white.WithAlpha(alpha2), 0.05f).SetUpdate(true);
             }
         }
 
+        // PostfixCo: 도움말 버튼과 on/off 버튼이 겹치는 현상 해결
+        // Postfix: 커스텀 탭의 버튼에 리스너 추가, 버튼 텍스트 설정
         [HarmonyPatch]
         public static class SetupPatch
         {
@@ -253,6 +243,7 @@ namespace EditorTabLib
             }
         }
 
+        // 버튼의 설명 텍스트 제거
         [HarmonyPatch(typeof(Property), "info", MethodType.Setter)]
         public static class SetInfoPatch
         {
@@ -263,6 +254,7 @@ namespace EditorTabLib
             }
         }
 
+        // 값이 바뀔 때 onChange 호출
         public static class ValueChangePatches
         {
             // Color: OnEndEdit - string s
