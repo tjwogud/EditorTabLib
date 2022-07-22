@@ -6,7 +6,7 @@ namespace EditorTabLib.Properties
     {
         private readonly int value_default;
 
-        public Property_Rating(string name, int value_default = 0, string key = null, bool canBeDisabled = false, bool startEnabled = false, Dictionary<string, string> enableIf = null, Dictionary<string, string> disableIf = null)
+        public Property_Rating(string name, int value_default = 1, string key = null, bool canBeDisabled = false, bool startEnabled = false, Dictionary<string, string> enableIf = null, Dictionary<string, string> disableIf = null)
             : base(name, key, canBeDisabled, startEnabled, enableIf, disableIf)
         {
             this.value_default = value_default;

@@ -35,7 +35,7 @@ namespace EditorTabLib.Properties
                     this.max = max != null ? Convert.ToInt32(max) : int.MaxValue;
                     break;
                 case InputType.String:
-                    this.value_default = RDString.Get(value_default as string ?? string.Empty);
+                    this.value_default = value_default as string ?? string.Empty;
                     this.min = min != null ? Convert.ToInt32(min) : int.MinValue;
                     this.max = max != null ? Convert.ToInt32(max) : int.MaxValue;
                     break;

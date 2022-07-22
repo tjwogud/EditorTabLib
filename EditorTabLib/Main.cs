@@ -1,4 +1,5 @@
 ﻿using ADOFAI;
+using EditorTabLib.Utils;
 using HarmonyLib;
 using System.Collections.Generic;
 using System.Reflection;
@@ -36,7 +37,7 @@ namespace EditorTabLib
 
         internal static void AddOrDeleteAllTabs(bool flag)
         {
-            if (GCS.settingsInfo == null)
+            if (!typeof(ADOStartup).Get<bool>("startup"))
                 return;
             CustomTabManager.list.ForEach(tab =>
             {
@@ -46,7 +47,7 @@ namespace EditorTabLib
 
         internal static void AddOrDeleteTab(CustomTabManager.CustomTab tab, bool flag)
         {
-            if (GCS.settingsInfo == null)
+            if (!typeof(ADOStartup).Get<bool>("startup"))
                 return;
             if (flag)
             {
@@ -68,15 +69,11 @@ namespace EditorTabLib
                         levelEventInfo.propertiesInfo.Add(propertyInfo.name, propertyInfo);
                     }
                 GCS.levelEventTypeString[(LevelEventType)tab.type] = tab.name;
-                lock (GCS.levelEventsInfo)
-                    GCS.levelEventsInfo[tab.name] = levelEventInfo;
                 GCS.levelEventIcons[(LevelEventType)tab.type] = tab.icon;
                 GCS.settingsInfo[tab.name] = levelEventInfo;
             } else
             {
                 GCS.levelEventTypeString.Remove((LevelEventType)tab.type);
-                lock (GCS.levelEventsInfo)
-                    GCS.levelEventsInfo.Remove(tab.name);
                 GCS.levelEventIcons.Remove((LevelEventType)tab.type);
                 GCS.settingsInfo.Remove(tab.name);
             }

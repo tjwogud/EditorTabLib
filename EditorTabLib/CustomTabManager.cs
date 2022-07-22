@@ -13,7 +13,7 @@ namespace EditorTabLib
         internal static Dictionary<int, CustomTab> byType = new Dictionary<int, CustomTab>();
         internal static Dictionary<string, CustomTab> byName = new Dictionary<string, CustomTab>();
 
-        public static void AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Properties.Property> properties, int index = -1)
+        public static void AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Properties.Property> properties, bool saveSetting = false, Action onFocused = null, Action onUnFocused = null, Func<LevelEvent, string, object, object, bool> onChange = null, int index = -1)
         {
             if (icon == null)
                 throw new ArgumentNullException("icon cannot be null!");
@@ -37,13 +37,17 @@ namespace EditorTabLib
                 type = type,
                 name = name,
                 title = title,
-                index = index,
-                properties = properties.Select(property => property.ToData()).ToList()
+                properties = properties.Select(property => property.ToData()).ToList(),
+                saveSetting = saveSetting,
+                onFocused = onFocused,
+                onUnFocused = onUnFocused,
+                onChange = onChange,
+                index = index
             };
             AddTab(tab);
         }
 
-        public static void AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Dictionary<string, object>> properties, int index = -1)
+        public static void AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Dictionary<string, object>> properties, bool saveSetting = false, Action onFocused = null, Action onUnFocused = null, Func<LevelEvent, string, object, object, bool> onChange = null, int index = -1)
         {
             if (icon == null)
                 throw new ArgumentNullException("icon cannot be null!");
@@ -67,8 +71,12 @@ namespace EditorTabLib
                 type = type,
                 name = name,
                 title = title,
-                index = index,
-                properties = properties
+                properties = properties,
+                saveSetting = saveSetting,
+                onFocused = onFocused,
+                onUnFocused = onUnFocused,
+                onChange = onChange,
+                index = index
             };
             AddTab(tab);
         }
@@ -112,17 +120,16 @@ namespace EditorTabLib
             InspectorPanel settingsPanel = scnEditor.instance?.settingsPanel;
             if (settingsPanel == null)
                 return;
-            GameObject gameObject = UnityEngine.Object.Instantiate(settingsPanel.gc.prefab_propertiesPanel);
+            GameObject gameObject = UnityEngine.Object.Instantiate(RDConstants.data.prefab_propertiesPanel);
             gameObject.name = tab.name;
             PropertiesPanel component = gameObject.GetComponent<PropertiesPanel>();
             component.levelEventType = (LevelEventType)tab.type;
             component.gameObject.SetActive(false);
-            GameObject gameObject2 = UnityEngine.Object.Instantiate(settingsPanel.gc.prefab_tab);
+            GameObject gameObject2 = UnityEngine.Object.Instantiate(RDConstants.data.prefab_tab);
             InspectorTab component2 = gameObject2.GetComponent<InspectorTab>();
             component2.Init((LevelEventType)tab.type, settingsPanel);
             component2.SetSelected(false);
-            lock (GCS.levelEventsInfo)
-                component.Init(settingsPanel, GCS.levelEventsInfo[tab.name]);
+            component.Init(settingsPanel, GCS.settingsInfo[tab.name]);
 
             if (tab.index == -1)
             {
@@ -221,7 +228,7 @@ namespace EditorTabLib
             {
                 if (!dict.TryGetValue(tab.type, out InspectorTab component))
                 {
-                    GameObject gameObject = UnityEngine.Object.Instantiate(settingsPanel.gc.prefab_tab);
+                    GameObject gameObject = UnityEngine.Object.Instantiate(RDConstants.data.prefab_tab);
                     component = gameObject.GetComponent<InspectorTab>();
                     component.Init((LevelEventType)tab.type, settingsPanel);
                     component.SetSelected(false);
@@ -241,7 +248,6 @@ namespace EditorTabLib
 
         internal class CustomTab
         {
-
             public Sprite icon;
             public int type;
             public string name;
@@ -249,6 +255,10 @@ namespace EditorTabLib
             public Type page;
             public int index;
             public List<Dictionary<string, object>> properties;
+            public Action onFocused;
+            public Action onUnFocused;
+            public Func<LevelEvent, string, object, object, bool> onChange;
+            public bool saveSetting;
             internal CustomTab()
             {
             }

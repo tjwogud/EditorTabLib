@@ -20,7 +20,7 @@ namespace EditorTabLib.Properties
             return new Dictionary<string, object>()
                     {
                         { "name", name },
-                        { "type", "Enum:" + (type.Assembly == typeof(ADOBase).Assembly ? type.Name : type.AssemblyQualifiedName) },
+                        { "type", "Enum:" + (type.Assembly.FullName == typeof(ADOBase).Assembly.FullName ? type.Name : type.AssemblyQualifiedName) },
                         { "default", value_default },
                         { "canBeDisabled", canBeDisabled },
                         { "startEnabled", startEnabled },
