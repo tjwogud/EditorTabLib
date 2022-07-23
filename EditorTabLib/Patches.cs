@@ -18,7 +18,7 @@ namespace EditorTabLib
     {
         // string을 LevelEventType로 변환할 시 커스텀 탭의 LevelEventType도 리턴
         [HarmonyPatch]
-        public static class ParseEnumPatch
+        public static class RDUtilsParseEnumPatch
         {
             public static MethodBase TargetMethod()
             {
@@ -55,7 +55,7 @@ namespace EditorTabLib
 
         // 에디터에 들어갈 시 모든 탭 추가 후 정렬
         [HarmonyPatch(typeof(scnEditor), "Awake")]
-        public static class AwakePatch
+        public static class scnEditorAwakePatch
         {
             public static bool Prefix()
             {
@@ -70,7 +70,7 @@ namespace EditorTabLib
 
         // 커스텀 탭의 LevelEventType이 설정 탭으로 인식되도록 함
         [HarmonyPatch(typeof(EditorConstants), "IsSetting")]
-        public static class IsSettingPatch
+        public static class EditorConstantsIsSettingPatch
         {
             public static void Postfix(LevelEventType type, ref bool __result)
             {
@@ -81,7 +81,7 @@ namespace EditorTabLib
 
         // NullReferenceException 방지
         [HarmonyPatch(typeof(scnEditor), "GetSelectedFloorEvents")]
-        public static class GetSelectedFloorEventsPatch
+        public static class scnEditorGetSelectedFloorEventsPatch
         {
             public static void Postfix(LevelEventType eventType, ref List<LevelEvent> __result)
             {
@@ -92,7 +92,7 @@ namespace EditorTabLib
 
         // 패널을 표시할 시 여러 설정
         [HarmonyPatch(typeof(InspectorPanel), "ShowPanel")]
-        public static class ShowPanelPatch
+        public static class InspectorPanelShowPanelPatch
         {
             public static readonly Dictionary<LevelEventType, LevelEvent> saves = new Dictionary<LevelEventType, LevelEvent>();
             public static bool cancelled = true;
@@ -154,12 +154,24 @@ namespace EditorTabLib
             }
         }
 
+        // 도움말 버튼과 on/off 버튼이 겹치는 현상 해결
         // 탭 내용 추가
         [HarmonyPatch(typeof(PropertiesPanel), "Init")]
-        public static class PropertyPanelPatch
+        public static class PropertyPanelInitPatch
         {
             public static void Postfix(PropertiesPanel __instance, LevelEventInfo levelEventInfo)
             {
+                __instance.properties.ToList().ForEach(pair =>
+                {
+                    if (pair.Value.info.canBeDisabled
+                        && RDString.GetWithCheck($"editor.{pair.Key}.help", out bool exists) != null
+                        && exists
+                        && pair.Value.helpButton.transform is RectTransform rect)
+                    {
+                        rect.SetAsLastSibling();
+                        rect.anchoredPosition = new Vector2(rect.anchoredPosition3D.x - 28, rect.anchoredPosition.y);
+                    }
+                });
                 if (CustomTabManager.byType.TryGetValue((int)levelEventInfo.type, out CustomTabManager.CustomTab tab))
                 {
                     if (tab.page != null)
@@ -184,7 +196,7 @@ namespace EditorTabLib
 
         // OnFocused과 OnUnFocused 호출
         [HarmonyPatch(typeof(InspectorTab), "SetSelected")]
-        public static class SetSelectedPatch
+        public static class InspectorTabSetSelectedPatch
         {
             public static void Postfix(InspectorTab __instance, bool selected)
             {
@@ -199,53 +211,31 @@ namespace EditorTabLib
             }
         }
 
-        // PostfixCo: 도움말 버튼과 on/off 버튼이 겹치는 현상 해결
-        // Postfix: 커스텀 탭의 버튼에 리스너 추가, 버튼 텍스트 설정
-        [HarmonyPatch]
-        public static class SetupPatch
+        // 커스텀 탭의 버튼에 리스너 추가, 버튼 텍스트 설정
+        [HarmonyPatch(typeof(PropertyControl), "Setup")]
+        public static class PropertyControl_ExportSetupPatch
         {
-            public static IEnumerable<MethodBase> TargetMethods()
+            public static void Postfix(PropertyControl_Export __instance)
             {
-                yield return AccessTools.Method(typeof(PropertyControl), "Setup");
-                yield return AccessTools.Method(typeof(PropertyControl_Toggle), "EnumSetup");
-            }
-
-            public static IEnumerator PostfixCo(PropertyControl instance)
-            {
-                yield return new WaitForEndOfFrame();
-                if (instance.propertyInfo.canBeDisabled
-                    && instance.propertiesPanel.properties[instance.propertyInfo.name] is Property property
-                    && RDString.GetWithCheck($"editor.{property.key}.help", out bool exists) != null
-                    && exists
-                    && property.helpButton.transform is RectTransform rect)
-                {
-                    rect.SetAsLastSibling();
-                    rect.anchoredPosition = new Vector2(rect.anchoredPosition3D.x - 28, rect.anchoredPosition.y);
-                }
-            }
-
-            public static void Postfix(PropertyControl __instance)
-            {
-                StaticCoroutine.Do(PostfixCo(__instance));
-                if (!(__instance is PropertyControl_Export instance) || !(__instance.propertyInfo.value_default is UnityAction action))
+                if (!(__instance.propertyInfo.value_default is UnityAction action))
                     return;
-                instance.exportButton.onClick.RemoveAllListeners();
-                instance.exportButton.onClick.AddListener(action);
-                if (instance.propertyInfo.customLocalizationKey == null)
+                __instance.exportButton.onClick.RemoveAllListeners();
+                __instance.exportButton.onClick.AddListener(action);
+                if (__instance.propertyInfo.customLocalizationKey == null)
                 {
-                    string str = "editor." + instance.propertyInfo.levelEventInfo.name + "." + instance.propertyInfo.name;
-                    instance.buttonText.text = RDString.GetWithCheck(str, out bool flag, null);
+                    string str = "editor." + __instance.propertyInfo.levelEventInfo.name + "." + __instance.propertyInfo.name;
+                    __instance.buttonText.text = RDString.GetWithCheck(str, out bool flag, null);
                     if (!flag)
-                        instance.buttonText.text = RDString.GetWithCheck("editor." + instance.propertyInfo.name, out _, null);
+                        __instance.buttonText.text = RDString.GetWithCheck("editor." + __instance.propertyInfo.name, out _, null);
                 }
                 else
-                    instance.buttonText.text = (instance.propertyInfo.customLocalizationKey == "") ? "" : RDString.Get(instance.propertyInfo.customLocalizationKey, null);
+                    __instance.buttonText.text = (__instance.propertyInfo.customLocalizationKey == "") ? "" : RDString.Get(__instance.propertyInfo.customLocalizationKey, null);
             }
         }
 
         // 버튼의 설명 텍스트 제거
         [HarmonyPatch(typeof(Property), "info", MethodType.Setter)]
-        public static class SetInfoPatch
+        public static class Propertyset_infoPatch
         {
             public static void Postfix(Property __instance)
             {
