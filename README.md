@@ -118,14 +118,14 @@ public static class Main
                     value_default: 1f,
                     min: 0.001f,
                     max: 10000f,
-                    key: "testMod.editor.testField2"),
+                    key: "testMod.editor.testField2",
                     enableIf: new Dictionary<string, string>() { { "testField1", "Enabled" } }
                 ),
                 new Property_InputField(
                     name: "testField3",
                     type: Property_InputField.InputType.String,
                     value_default: "default text",
-                    key: "testMod.editor.testField3"),
+                    key: "testMod.editor.testField3",
                     enableIf: new Dictionary<string, string>() { { "testField1", "Disabled" } }
                 )
             });
