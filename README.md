@@ -7,16 +7,27 @@
 // index is optional
 CustomTabManager.AddTab<PageType>(Sprite icon, int levelEventType, string eventName, Dictionary<SystemLanguage, string> title, int index)
 
-CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, Dictionary<SystemLanguage, string> title, List<Dictionary<string, object>> properties, int index)
+CustomTabManager.AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Dictionary<string, object>> properties, bool saveSetting, Action onFocused, Action onUnFocused, Func<LevelEvent, string, object, object, bool> onChange, int index)
 
-CustomTabManager.AddTab(Sprite icon, int levelEventType, string eventName, Dictionary<SystemLanguage, string> title, List<Property> properties, int index)
+CustomTabManager.AddTab(Sprite icon, int type, string name, Dictionary<SystemLanguage, string> title, List<Properties.Property> properties, bool saveSetting, Action onFocused, Action onUnFocused, Func<LevelEvent, string, object, object, bool> onChange, int index)
 
 CustomTabManager.DeleteTab(int levelEventType)
 
 CustomTabManager.DeleteTab(string eventName)
 ```
 
+### 한국어
+모드의 OnToggle에서 AddTab/DeleteTab을 사용하여 탭을 추가/삭제할 수 있습니다.
+onChange는 매개변수로 이벤트 객체, 속성이름, 바뀌기 전 값, 현재 값을 주고, 리턴 값이 false라면 값을 바뀌기 전 값으로 되돌립니다. 이 안에서 이벤트 데이터를 변경한 후에는 레벨이벤트객체.UpdatePanel() 을 호출해 패널을 업데이트 해 주어야 합니다.
+
+### English
+You can add/delete your own tab by using AddTab/DeleteTab on mod's OnToggle.
+onChange gives you level event object, property name, prev value, value as arguments, and if return value is false, revert property value to prev value. After you change event data in onChange, you have to call levelEventObject.UpdatePanel() so that panel can be updated.
+
 ## 예시 / Example
+또다른 예시를 원한다면, [이 라이브러리를 사용한 모드가 있습니다.](https://github.com/tjwogud/MagicShapeMultiply)
+If you want more example, [there's a mod that uses this library.](https://github.com/tjwogud/MagicShapeMultiply)
+
 ```cs
 public static class Main
 {
