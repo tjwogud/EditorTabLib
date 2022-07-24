@@ -159,8 +159,15 @@ namespace EditorTabLib
         [HarmonyPatch(typeof(PropertiesPanel), "Init")]
         public static class PropertyPanelInitPatch
         {
-            public static void Postfix(PropertiesPanel __instance, LevelEventInfo levelEventInfo)
+            public static void Prefix(out bool __state)
             {
+                __state = SteamIntegration.Instance.initialized;
+                SteamIntegration.Instance.initialized = true;
+            }
+
+            public static void Postfix(PropertiesPanel __instance, LevelEventInfo levelEventInfo, bool __state)
+            {
+                SteamIntegration.Instance.initialized = __state;
                 __instance.properties.ToList().ForEach(pair =>
                 {
                     if (pair.Value.info.canBeDisabled
