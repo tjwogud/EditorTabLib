@@ -8,7 +8,7 @@ using UnityModManagerNet;
 
 namespace EditorTabLib
 {
-    public static class Main
+    internal static class Main
     {
         internal static UnityModManager.ModEntry.ModLogger Logger;
         private static Harmony harmony;

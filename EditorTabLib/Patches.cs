@@ -1,5 +1,4 @@
 ﻿using ADOFAI;
-using DG.Tweening;
 using EditorTabLib.Components;
 using EditorTabLib.Utils;
 using HarmonyLib;
@@ -18,9 +17,9 @@ namespace EditorTabLib
     {
         // string을 LevelEventType로 변환할 시 커스텀 탭의 LevelEventType도 리턴
         [HarmonyPatch]
-        public static class RDUtilsParseEnumPatch
+        internal static class RDUtilsParseEnumPatch
         {
-            public static MethodBase TargetMethod()
+            internal static MethodBase TargetMethod()
             {
                 return AccessTools.Method(typeof(RDUtils), "ParseEnum", null, null).MakeGenericMethod(new Type[]
                 {
@@ -28,9 +27,9 @@ namespace EditorTabLib
                 });
             }
 
-            public static bool cancelled = true;
+            internal static bool cancelled = true;
 
-            public static bool Prefix(string str, ref LevelEventType __result)
+            internal static bool Prefix(string str, ref LevelEventType __result)
             {
                 if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
                 {
@@ -41,7 +40,7 @@ namespace EditorTabLib
                 return true;
             }
 
-            public static void Postfix(string str, ref LevelEventType __result)
+            internal static void Postfix(string str, ref LevelEventType __result)
             {
                 if (!cancelled)
                 {
@@ -55,14 +54,14 @@ namespace EditorTabLib
 
         // 에디터에 들어갈 시 모든 탭 추가 후 정렬
         [HarmonyPatch(typeof(scnEditor), "Awake")]
-        public static class scnEditorAwakePatch
+        internal static class scnEditorAwakePatch
         {
-            public static bool Prefix()
+            internal static bool Prefix()
             {
                 Main.AddOrDeleteAllTabs(true);
                 return true;
             }
-            public static void Postfix()
+            internal static void Postfix()
             {
                 CustomTabManager.SortTab();
             }
@@ -70,9 +69,9 @@ namespace EditorTabLib
 
         // 커스텀 탭의 LevelEventType이 설정 탭으로 인식되도록 함
         [HarmonyPatch(typeof(EditorConstants), "IsSetting")]
-        public static class EditorConstantsIsSettingPatch
+        internal static class EditorConstantsIsSettingPatch
         {
-            public static void Postfix(LevelEventType type, ref bool __result)
+            internal static void Postfix(LevelEventType type, ref bool __result)
             {
                 if (CustomTabManager.byType.ContainsKey((int)type))
                     __result = true;
@@ -81,30 +80,33 @@ namespace EditorTabLib
 
         // NullReferenceException 방지
         [HarmonyPatch(typeof(scnEditor), "GetSelectedFloorEvents")]
-        public static class scnEditorGetSelectedFloorEventsPatch
+        internal static class scnEditorGetSelectedFloorEventsPatch
         {
-            public static void Postfix(LevelEventType eventType, ref List<LevelEvent> __result)
+            internal static bool Prefix(LevelEventType eventType, ref List<LevelEvent> __result)
             {
-                if (CustomTabManager.byType.ContainsKey((int)eventType) && __result == null)
+                if (scnEditor.instance.selectedFloors == null || scnEditor.instance.selectedFloors.Count == 0 || (CustomTabManager.byType.ContainsKey((int)eventType) && __result == null)) {
                     __result = new List<LevelEvent>();
+                    return false;
+                }
+                return true;
             }
         }
 
         // 패널을 표시할 시 여러 설정
         [HarmonyPatch(typeof(InspectorPanel), "ShowPanel")]
-        public static class InspectorPanelShowPanelPatch
+        internal static class InspectorPanelShowPanelPatch
         {
-            public static readonly Dictionary<LevelEventType, LevelEvent> saves = new Dictionary<LevelEventType, LevelEvent>();
-            public static bool cancelled = true;
+            internal static readonly Dictionary<LevelEventType, LevelEvent> saves = new Dictionary<LevelEventType, LevelEvent>();
+            internal static bool cancelled = true;
 
-            public static bool Prefix(InspectorPanel __instance, LevelEventType eventType)
+            internal static bool Prefix(InspectorPanel __instance, LevelEventType eventType)
             {
                 Postfix(__instance, eventType);
                 cancelled = false;
                 return !CustomTabManager.byType.ContainsKey((int)eventType);
             }
 
-            public static void Postfix(InspectorPanel __instance, LevelEventType eventType)
+            internal static void Postfix(InspectorPanel __instance, LevelEventType eventType)
             {
                 if (!cancelled)
                 {
@@ -157,15 +159,15 @@ namespace EditorTabLib
         // 도움말 버튼과 on/off 버튼이 겹치는 현상 해결
         // 탭 내용 추가
         [HarmonyPatch(typeof(PropertiesPanel), "Init")]
-        public static class PropertyPanelInitPatch
+        internal static class PropertyPanelInitPatch
         {
-            public static void Prefix(out bool __state)
+            internal static void Prefix(out bool __state)
             {
                 __state = SteamIntegration.Instance.initialized;
                 SteamIntegration.Instance.initialized = true;
             }
 
-            public static void Postfix(PropertiesPanel __instance, LevelEventInfo levelEventInfo, bool __state)
+            internal static void Postfix(PropertiesPanel __instance, LevelEventInfo levelEventInfo, bool __state)
             {
                 SteamIntegration.Instance.initialized = __state;
                 __instance.properties.ToList().ForEach(pair =>
@@ -203,9 +205,9 @@ namespace EditorTabLib
 
         // OnFocused과 OnUnFocused 호출
         [HarmonyPatch(typeof(InspectorTab), "SetSelected")]
-        public static class InspectorTabSetSelectedPatch
+        internal static class InspectorTabSetSelectedPatch
         {
-            public static void Postfix(InspectorTab __instance, bool selected)
+            internal static void Postfix(InspectorTab __instance, bool selected)
             {
                 int type = (int)__instance.levelEventType;
                 if (!CustomTabManager.byType.ContainsKey(type))
@@ -220,9 +222,9 @@ namespace EditorTabLib
 
         // 커스텀 탭의 버튼에 리스너 추가, 버튼 텍스트 설정
         [HarmonyPatch(typeof(PropertyControl), "Setup")]
-        public static class PropertyControl_ExportSetupPatch
+        internal static class PropertyControl_ExportSetupPatch
         {
-            public static void Postfix(PropertyControl_Export __instance)
+            internal static void Postfix(PropertyControl_Export __instance)
             {
                 if (!(__instance.propertyInfo.value_default is UnityAction action))
                     return;
@@ -242,9 +244,9 @@ namespace EditorTabLib
 
         // 버튼의 설명 텍스트 제거
         [HarmonyPatch(typeof(Property), "info", MethodType.Setter)]
-        public static class Propertyset_infoPatch
+        internal static class Propertyset_infoPatch
         {
-            public static void Postfix(Property __instance)
+            internal static void Postfix(Property __instance)
             {
                 if (__instance.info.type == PropertyType.Export)
                     __instance.label.text = "";
@@ -252,7 +254,7 @@ namespace EditorTabLib
         }
 
         // 값이 바뀔 때 onChange 호출
-        public static class ValueChangePatches
+        internal static class ValueChangePatches
         {
             // Color: OnEndEdit - string s
             // File: ProcessFile - string newFilename
@@ -263,9 +265,9 @@ namespace EditorTabLib
             // Vector2: SetVectorVals - string sX, string sY
 
             [HarmonyPatch]
-            public static class ValueChangePatch1
+            internal static class ValueChangePatch1
             {
-                public static IEnumerable<MethodBase> TargetMethods()
+                internal static IEnumerable<MethodBase> TargetMethods()
                 {
                     yield return AccessTools.Method(typeof(PropertyControl_Color), "OnEndEdit");
                     yield return AccessTools.Method(typeof(PropertyControl_File), "ProcessFile");
@@ -274,14 +276,14 @@ namespace EditorTabLib
                     yield return AccessTools.Method(typeof(PropertyControl_Vector2), "SetVectorVals");
                 }
 
-                public static void Prefix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, ref object __state)
+                internal static void Prefix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, ref object __state)
                 {
                     if (__instance is PropertyControl_Toggle control && control.settingText)
                         return;
                     ___propertiesPanel.inspectorPanel.selectedEvent.data.TryGetValue(___propertyInfo.name, out __state);
                 }
 
-                public static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, object __state)
+                internal static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, object __state)
                 {
                     if (__instance is PropertyControl_Toggle control && control.settingText)
                         return;
@@ -298,15 +300,15 @@ namespace EditorTabLib
             }
 
             [HarmonyPatch]
-            public static class ValueChangePatch2
+            internal static class ValueChangePatch2
             {
-                public static IEnumerable<MethodBase> TargetMethods()
+                internal static IEnumerable<MethodBase> TargetMethods()
                 {
                     yield return AccessTools.Method(typeof(PropertyControl_LongText), "Setup");
                     yield return AccessTools.Method(typeof(PropertyControl_Text), "Setup");
                 }
 
-                public static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo)
+                internal static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo)
                 {
                     if (!CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab tab)
                         || tab.onChange == null)
