@@ -1,18 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace EditorTabLib.Properties
 {
-    public class Property_Enum<T> : Property where T : Enum
+    public class Property_List : Property
     {
+        private readonly List<string> list;
         private readonly string value_default;
-        private readonly Type type;
 
-        public Property_Enum(string name, T value_default = default, string key = null, bool canBeDisabled = false, bool startEnabled = false, Dictionary<string, string> enableIf = null, Dictionary<string, string> disableIf = null)
+        public Property_List(string name, List<string> list, string value_default = default, string key = null, bool canBeDisabled = false, bool startEnabled = false, Dictionary<string, string> enableIf = null, Dictionary<string, string> disableIf = null)
             : base(name, key, canBeDisabled, startEnabled, enableIf, disableIf)
         {
-            this.value_default = value_default.ToString();
-            type = typeof(T);
+            this.list = list;
+            this.value_default = value_default.IsNullOrEmpty() ? list[0] : value_default;
         }
 
         public override Dictionary<string, object> ToData()
@@ -20,7 +19,8 @@ namespace EditorTabLib.Properties
             return new Dictionary<string, object>()
                     {
                         { "name", name },
-                        { "type", "Enum:" + type.AssemblyQualifiedName },
+                        { "type", "Enum:" + typeof(Dummy).AssemblyQualifiedName },
+                        { "unit", $"{string.Join(";", list)}" },
                         { "default", value_default },
                         { "canBeDisabled", canBeDisabled },
                         { "startEnabled", startEnabled },
@@ -29,5 +29,7 @@ namespace EditorTabLib.Properties
                         { "key", key }
                     };
         }
+
+        internal enum Dummy { }
     }
 }

@@ -7,9 +7,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using UnityModManagerNet;
 
 namespace EditorTabLib
 {
@@ -212,10 +214,10 @@ namespace EditorTabLib
                 int type = (int)__instance.levelEventType;
                 if (!CustomTabManager.byType.ContainsKey(type))
                     return;
-                CustomTabBehaviour behaviour = __instance.panel.panelsList.Find(panel => panel.levelEventType == __instance.levelEventType)?.content?.GetComponent<CustomTabBehaviour>();
+                CustomTabBehaviour behaviour = scnEditor.instance?.settingsPanel?.panelsList?.Find(panel => panel.levelEventType == __instance.levelEventType)?.content?.GetComponent<CustomTabBehaviour>();
                 if (selected)
                     behaviour?.OnFocused();
-                else if (__instance.icon.color.a == 1)
+                else if (__instance.icon?.color.a == 1)
                     behaviour?.OnUnFocused();
             }
         }
@@ -250,6 +252,141 @@ namespace EditorTabLib
             {
                 if (__instance.info.type == PropertyType.Export)
                     __instance.label.text = "";
+            }
+        }
+
+        // Property_List 관련 기능
+        [HarmonyPatch]
+        internal static class PropertyInfoConstructor
+        {
+            internal static MethodBase TargetMethod()
+            {
+                return AccessTools.Constructor(typeof(ADOFAI.PropertyInfo), new Type[] { typeof(Dictionary<string, object>), typeof(LevelEventInfo) });
+            }
+
+            internal static void Prefix(Dictionary<string, object> dict, out (bool, string) __state)
+            {
+                string text = dict["type"] as string;
+                if (text.StartsWith("Enum:") && typeof(Properties.Property_List.Dummy).Equals(Type.GetType(text.Replace("Enum:", ""))))
+                {
+                    __state = (true, dict["default"] as string);
+                    dict.Remove("default");
+                } else
+                    __state = (false, null);
+            }
+
+            internal static void Postfix(ADOFAI.PropertyInfo __instance, (bool, string) __state)
+            {
+                if (__state.Item1)
+                    __instance.value_default = __state.Item2;
+            }
+        }
+
+        // Property_List 관련 기능
+        [HarmonyPatch(typeof(TweakableDropdownItem), "localizedValue", MethodType.Getter)]
+        internal static class TweakableDropdownItemgetlocalizedValuePatch
+        {
+            internal static bool Prefix(TweakableDropdownItem __instance, ref string __result)
+            {
+                if (__instance.localizeValue && __instance.dropdown.transform.parent.GetComponent<PropertyControl_Toggle>().propertyInfo.enumType.Equals(typeof(Properties.Property_List.Dummy)))
+                {
+                    __result = RDStringEx.GetOrOrigin(__instance.value);
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        // Property_List 관련 기능
+        [HarmonyPatch(typeof(PropertyControl_Toggle), "EnumSetup")]
+        internal static class PropertyControl_ToggleEnumSetupPatch
+        {
+            internal static void Prefix(PropertyControl_Toggle __instance, ref string enumTypeString, ref List<string> enumVals)
+            {
+                if (enumTypeString != null && Type.GetType(enumTypeString)?.Assembly == typeof(ADOBase).Assembly)
+                    enumTypeString = Type.GetType(enumTypeString).FullName;
+                if (typeof(Properties.Property_List.Dummy).Equals(__instance.propertyInfo.enumType))
+                    enumVals = __instance.propertyInfo.unit.Split(';').ToList();
+            }
+            
+            internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                List<CodeInstruction> codes = new List<CodeInstruction>();
+                Label? targetLabel1 = null;
+                for (int i = 0; i < instructions.Count(); i++)
+                {
+                    CodeInstruction code = instructions.ElementAt(i);
+                    if (code.opcode == OpCodes.Ldarg_3)
+                    {
+                        CodeInstruction nextCode = instructions.ElementAt(i + 1);
+                        if (nextCode.opcode == OpCodes.Brtrue_S)
+                            targetLabel1 = (Label)nextCode.operand;
+                    }
+                    if (targetLabel1.HasValue && code.labels.Contains(targetLabel1.Value))
+                    {
+                        Label label1 = generator.DefineLabel();
+                        Label label2 = (Label)instructions.ElementAt(i - 1).operand;
+                        codes.Add(new CodeInstruction(OpCodes.Ldarg_0).WithLabels(code.ExtractLabels()));
+                        codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")));
+                        codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
+                        codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Properties.Property_List.Dummy)));
+                        codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Type), "GetTypeFromHandle")));
+                        codes.Add(new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "Equals", new Type[] { typeof(Type) })));
+                        codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
+                        codes.Add(new CodeInstruction(instructions.ElementAt(i - 3)));
+                        codes.Add(new CodeInstruction(instructions.ElementAt(i - 2)));
+                        codes.Add(new CodeInstruction(OpCodes.Ldnull));
+                        codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(RDStringEx), "GetOrOrigin")));
+                        codes.Add(new CodeInstruction(OpCodes.Br, label2));
+                        codes.Add(code.WithLabels(label1));
+
+                        continue;
+                    }
+                    codes.Add(code);
+                }
+                return codes;
+            }
+        }
+
+        // Property_List 관련 기능
+        [HarmonyPatch(typeof(PropertyControl_Toggle), "SelectVar")]
+        internal static class PropertyControl_ToggleSelectVarPatch
+        {
+            internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+            {
+                List<CodeInstruction> codes = new List<CodeInstruction>();
+                for (int i = 0; i < instructions.Count(); i++)
+                {
+                    CodeInstruction code = instructions.ElementAt(i);
+                    if (code.opcode == OpCodes.Call && (code.operand is MethodInfo method) && method.Name == "Parse")
+                    {
+                        CodeInstruction nextCode = instructions.ElementAt(i + 1);
+                        if (nextCode.opcode != OpCodes.Unbox_Any)
+                        {
+                            codes.RemoveAt(codes.Count() - 2);
+                            codes.RemoveAt(codes.Count() - 1);
+                            Label label1 = generator.DefineLabel();
+                            Label label2 = generator.DefineLabel();
+                            codes.Add(new CodeInstruction(OpCodes.Ldarg_0));
+                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")));
+                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
+                            codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Properties.Property_List.Dummy)));
+                            codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Type), "GetTypeFromHandle")));
+                            codes.Add(new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "Equals", new Type[] { typeof(Type) })));
+                            codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
+                            codes.Add(new CodeInstruction(OpCodes.Ldarg_1));
+                            codes.Add(new CodeInstruction(OpCodes.Br, label2));
+                            codes.Add(new CodeInstruction(OpCodes.Ldloc_2).WithLabels(label1));
+                            codes.Add(new CodeInstruction(OpCodes.Ldarg_1));
+                            codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Enum), "Parse", new Type[] { typeof(Type), typeof(string) })));
+                            codes.Add(nextCode.WithLabels(label2));
+                            i++;
+                            continue;
+                        }
+                    }
+                    codes.Add(code);
+                }
+                return codes;
             }
         }
 
@@ -329,11 +466,10 @@ namespace EditorTabLib
                             e.UpdatePanel();
                         }
                     };
-                    object prefixObj = inputField.onEndEdit.Method("GetDelegate", new object[] { prefix });
-                    object postfixObj = inputField.onEndEdit.Method("GetDelegate", new object[] { postfix });
-                    runtime.Method("Insert", new object[] { 0, prefixObj });
-                    runtime.Method("Add", new object[] { postfixObj });
-                    obj.Set("m_RuntimeCalls", runtime);
+                    object prefixObj = inputField.onEndEdit.Method("GetDelegate", new object[] { prefix }, new Type[] { typeof(UnityAction<string>) });
+                    object postfixObj = inputField.onEndEdit.Method("GetDelegate", new object[] { postfix }, new Type[] { typeof(UnityAction<string>) });
+                    runtime.Method("Insert", new object[] { 0, prefixObj }, new Type[] { typeof(int), Reflections.GetType("UnityEngine.Events.BaseInvokableCall") });
+                    runtime.Method("Add", new object[] { postfixObj }, new Type[] { Reflections.GetType("UnityEngine.Events.BaseInvokableCall") });
                     obj.Set("m_NeedsUpdate", true);
                 }
             }

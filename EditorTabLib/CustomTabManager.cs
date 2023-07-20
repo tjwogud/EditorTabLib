@@ -127,9 +127,9 @@ namespace EditorTabLib
             component.gameObject.SetActive(false);
             GameObject gameObject2 = UnityEngine.Object.Instantiate(RDConstants.data.prefab_tab);
             InspectorTab component2 = gameObject2.GetComponent<InspectorTab>();
+            component.Init(settingsPanel, GCS.settingsInfo[tab.name]);
             component2.Init((LevelEventType)tab.type, settingsPanel);
             component2.SetSelected(false);
-            component.Init(settingsPanel, GCS.settingsInfo[tab.name]);
 
             if (tab.index == -1)
             {
@@ -228,10 +228,13 @@ namespace EditorTabLib
             {
                 if (!dict.TryGetValue(tab.type, out InspectorTab component))
                 {
+                    /*
                     GameObject gameObject = UnityEngine.Object.Instantiate(RDConstants.data.prefab_tab);
                     component = gameObject.GetComponent<InspectorTab>();
                     component.Init((LevelEventType)tab.type, settingsPanel);
                     component.SetSelected(false);
+                    */
+                    component = null;
                 }
                 if (tab.index == -1 || tab.index >= tabs.Count)
                     tabs.Add(component);
@@ -241,6 +244,8 @@ namespace EditorTabLib
             for (int i = 0; i < tabs.Count; i++)
             {
                 InspectorTab tab = tabs[i];
+                if (!tab)
+                    continue;
                 tab.GetComponent<RectTransform>().AnchorPosY(8f - 68f * i);
                 tab.gameObject.transform.SetParent(settingsPanel.tabs, false);
             }
