@@ -1,5 +1,6 @@
 ﻿using ADOFAI;
 using EditorTabLib.Components;
+using EditorTabLib.Properties;
 using EditorTabLib.Utils;
 using HarmonyLib;
 using System;
@@ -8,6 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using TinyJson;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -245,10 +247,10 @@ namespace EditorTabLib
         }
 
         // 버튼의 설명 텍스트 제거
-        [HarmonyPatch(typeof(Property), "info", MethodType.Setter)]
+        [HarmonyPatch(typeof(ADOFAI.Property), "info", MethodType.Setter)]
         internal static class Propertyset_infoPatch
         {
-            internal static void Postfix(Property __instance)
+            internal static void Postfix(ADOFAI.Property __instance)
             {
                 if (__instance.info.type == PropertyType.Export)
                     __instance.label.text = "";
@@ -267,11 +269,12 @@ namespace EditorTabLib
             internal static void Prefix(Dictionary<string, object> dict, out (bool, string) __state)
             {
                 string text = dict["type"] as string;
-                if (text.StartsWith("Enum:") && typeof(Properties.Property_List.Dummy).Equals(Type.GetType(text.Replace("Enum:", ""))))
+                if (text.StartsWith("Enum:") && text.Length > 5 && typeof(Properties.Property_List.Dummy).Equals(Type.GetType(text.Substring(5))))
                 {
                     __state = (true, dict["default"] as string);
                     dict.Remove("default");
-                } else
+                }
+                else
                     __state = (false, null);
             }
 
@@ -303,8 +306,12 @@ namespace EditorTabLib
         {
             internal static void Prefix(PropertyControl_Toggle __instance, ref string enumTypeString, ref List<string> enumVals)
             {
-                if (enumTypeString != null && Type.GetType(enumTypeString)?.Assembly == typeof(ADOBase).Assembly)
-                    enumTypeString = Type.GetType(enumTypeString).FullName;
+                if (enumTypeString != null)
+                {
+                    Type type = typeof(ADOBase).Assembly.GetType(enumTypeString);
+                    if (type != null || (type = Type.GetType(enumTypeString))?.Assembly == typeof(ADOBase).Assembly)
+                        enumTypeString = type.FullName;
+                }
                 if (typeof(Properties.Property_List.Dummy).Equals(__instance.propertyInfo.enumType))
                     enumVals = __instance.propertyInfo.unit.Split(';').ToList();
             }
@@ -390,9 +397,27 @@ namespace EditorTabLib
             }
         }
 
+        [HarmonyPatch(typeof(PropertyControl_Tile), "Setup")]
+        public static class SetupPatch
+        {
+            public static void Postfix(PropertyControl_Tile __instance)
+            {
+                if (__instance.propertyInfo.dict.TryGetValue("hideButtons", out object value) && value is int i)
+                {
+                    if ((i & Property_Tile.THIS_TILE) != 0)
+                        __instance.buttonThisTile.gameObject.SetActive(false);
+                    if ((i & Property_Tile.START) != 0)
+                        __instance.buttonFirstTile.gameObject.SetActive(false);
+                    if ((i & Property_Tile.END) != 0)
+                        __instance.buttonLastTile.gameObject.SetActive(false);
+                }
+            }
+        }
+
         // 값이 바뀔 때 onChange 호출
         internal static class ValueChangePatches
         {
+            // Bool: SetValue - bool flag
             // Color: OnEndEdit - string s
             // File: ProcessFile - string newFilename
             // LongText: Add Listener On Setup
@@ -406,6 +431,7 @@ namespace EditorTabLib
             {
                 internal static IEnumerable<MethodBase> TargetMethods()
                 {
+                    yield return AccessTools.Method(typeof(PropertyControl_Bool), "SetValue");
                     yield return AccessTools.Method(typeof(PropertyControl_Color), "OnEndEdit");
                     yield return AccessTools.Method(typeof(PropertyControl_File), "ProcessFile");
                     yield return AccessTools.Method(typeof(PropertyControl_Rating), "SetInt");

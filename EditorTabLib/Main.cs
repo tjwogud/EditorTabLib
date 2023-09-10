@@ -3,6 +3,7 @@ using EditorTabLib.Utils;
 using HarmonyLib;
 using System.Collections.Generic;
 using System.Reflection;
+using TinyJson;
 using UnityEngine.Events;
 using UnityModManagerNet;
 
