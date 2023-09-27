@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using TinyJson;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -476,7 +477,7 @@ namespace EditorTabLib
                     if (!CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab tab)
                         || tab.onChange == null)
                         return;
-                    InputField inputField = __instance.Get<InputField>("inputField");
+                    TMP_InputField inputField = __instance.Get<TMP_InputField>("inputField");
                     object obj = typeof(UnityEventBase).Get("m_Calls", inputField.onEndEdit);
                     object runtime = obj.Get("m_RuntimeCalls");
                     object var = null;
