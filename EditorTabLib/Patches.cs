@@ -161,7 +161,6 @@ namespace EditorTabLib
             }
         }
 
-        // 도움말 버튼과 on/off 버튼이 겹치는 현상 해결
         // 탭 내용 추가
         [HarmonyPatch(typeof(PropertiesPanel), "Init")]
         internal static class PropertyPanelInitPatch
@@ -175,17 +174,6 @@ namespace EditorTabLib
             internal static void Postfix(PropertiesPanel __instance, LevelEventInfo levelEventInfo, bool __state)
             {
                 SteamIntegration.Instance.initialized = __state;
-                __instance.properties.ToList().ForEach(pair =>
-                {
-                    if (pair.Value.info.canBeDisabled
-                        && RDString.GetWithCheck($"editor.{pair.Key}.help", out bool exists) != null
-                        && exists
-                        && pair.Value.helpButton.transform is RectTransform rect)
-                    {
-                        rect.SetAsLastSibling();
-                        rect.anchoredPosition = new Vector2(rect.anchoredPosition3D.x - 28, rect.anchoredPosition.y);
-                    }
-                });
                 if (CustomTabManager.byType.TryGetValue((int)levelEventInfo.type, out CustomTabManager.CustomTab tab))
                 {
                     if (tab.page != null)
