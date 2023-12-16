@@ -36,7 +36,13 @@ namespace EditorTabLib
 
             internal static bool Prefix(string str, ref LevelEventType __result)
             {
-                if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
+                if (CustomEventManager.byName.TryGetValue(str, out CustomEventManager.CustomEvent ev))
+                {
+                    __result = (LevelEventType)ev.type;
+                    cancelled = false;
+                    return false;
+                }
+                else if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
                 {
                     __result = (LevelEventType)tab.type;
                     cancelled = false;
@@ -52,7 +58,9 @@ namespace EditorTabLib
                     cancelled = true;
                     return;
                 }
-                if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
+                if (CustomEventManager.byName.TryGetValue(str, out CustomEventManager.CustomEvent ev))
+                    __result = (LevelEventType)ev.type;
+                else if (CustomTabManager.byName.TryGetValue(str, out CustomTabManager.CustomTab tab))
                     __result = (LevelEventType)tab.type;
             }
         }
@@ -89,7 +97,9 @@ namespace EditorTabLib
         {
             internal static bool Prefix(LevelEventType eventType, ref List<LevelEvent> __result)
             {
-                if (scnEditor.instance.selectedFloors == null || scnEditor.instance.selectedFloors.Count == 0 || (CustomTabManager.byType.ContainsKey((int)eventType) && __result == null)) {
+                if (scnEditor.instance.selectedFloors == null
+                    || scnEditor.instance.selectedFloors.Count == 0
+                    || (CustomTabManager.byType.ContainsKey((int)eventType) && __result == null)) {
                     __result = new List<LevelEvent>();
                     return false;
                 }
@@ -104,23 +114,35 @@ namespace EditorTabLib
             internal static readonly Dictionary<LevelEventType, LevelEvent> saves = new Dictionary<LevelEventType, LevelEvent>();
             internal static bool cancelled = true;
 
-            internal static bool Prefix(InspectorPanel __instance, LevelEventType eventType)
+            internal static bool Prefix(InspectorPanel __instance, LevelEventType eventType, int eventIndex)
             {
-                Postfix(__instance, eventType);
+                Postfix(__instance, eventType, eventIndex);
                 cancelled = false;
-                return !CustomTabManager.byType.ContainsKey((int)eventType);
+                return !CustomEventManager.byType.ContainsKey((int)eventType) && !CustomTabManager.byType.ContainsKey((int)eventType);
             }
 
-            internal static void Postfix(InspectorPanel __instance, LevelEventType eventType)
+            internal static void Postfix(InspectorPanel __instance, LevelEventType eventType, int eventIndex)
             {
                 if (!cancelled)
                 {
                     cancelled = true;
                     return;
                 }
-                if (!CustomTabManager.byType.TryGetValue((int)eventType, out CustomTabManager.CustomTab tab))
-                    return;
+                if (!CustomEventManager.byType.TryGetValue((int)eventType, out CustomEventManager.CustomEvent ev))
+                {
+                    if (!CustomTabManager.byType.TryGetValue((int)eventType, out CustomTabManager.CustomTab t))
+                        return;
+                    ev = t;
+                }
                 __instance.Set("showingPanel", true);
+                if (ADOBase.editor.cacheSelectedEventIndex > 0)
+                {
+                    eventIndex = ADOBase.editor.cacheSelectedEventIndex;
+                }
+                else
+                {
+                    __instance.cacheEventIndex = eventIndex;
+                }
                 scnEditor.instance.SaveState(true, false);
                 scnEditor.instance.changingState++;
                 PropertiesPanel propertiesPanel = null;
@@ -130,16 +152,34 @@ namespace EditorTabLib
                     else
                         propertiesPanel2.gameObject.SetActive(false);
                 __instance.title.text =
-                    tab.title.TryGetValue(RDString.language, out string title) ?
+                    ev.title.TryGetValue(RDString.language, out string title) ?
                     title :
-                    (tab.title.TryGetValue(SystemLanguage.English, out title) ?
+                    (ev.title.TryGetValue(SystemLanguage.English, out title) ?
                     title :
-                    (tab.title.Values.Count > 0 ?
-                    tab.title.Values.ElementAt(0) :
-                    tab.name));
-                LevelEvent levelEvent = tab.saveSetting && saves.TryGetValue((LevelEventType)tab.type, out LevelEvent e) ? e : new LevelEvent(0, (LevelEventType)tab.type, GCS.settingsInfo[tab.name]);
-                if (tab.saveSetting)
-                    saves[(LevelEventType)tab.type] = levelEvent;
+                    (ev.title.Values.Count > 0 ?
+                    ev.title.Values.ElementAt(0) :
+                    ev.name));
+                LevelEvent levelEvent = null;
+                int num = 0;
+                if (ev is CustomTabManager.CustomTab tab) {
+                    levelEvent = new LevelEvent(0, (LevelEventType)ev.type, GCS.settingsInfo[ev.name]);
+                    if (tab.saveSetting)
+                    {
+                        if (saves.TryGetValue((LevelEventType)ev.type, out LevelEvent e))
+                            levelEvent = e;
+                        else
+                            saves[(LevelEventType)ev.type] = levelEvent;
+                    }
+                }
+                else
+                {
+                    List<LevelEvent> selecteds = ADOBase.editor.GetSelectedFloorEvents(eventType);
+                    num = selecteds.Count;
+                    if (eventIndex <= selecteds.Count - 1)
+                    {
+                        levelEvent = selecteds[eventIndex];
+                    }
+                }
                 if (propertiesPanel == null)
                     goto end;
                 if (levelEvent == null)
@@ -147,12 +187,25 @@ namespace EditorTabLib
                 __instance.selectedEvent = levelEvent;
                 __instance.selectedEventType = levelEvent.eventType;
                 levelEvent.UpdatePanel();
-                IEnumerator enumerator2 = __instance.tabs.GetEnumerator();
-                while (enumerator2.MoveNext())
+                foreach (RectTransform rect in __instance.tabs)
                 {
-                    RectTransform rect = (RectTransform)enumerator2.Current;
-                    InspectorTab component = rect.gameObject.GetComponent<InspectorTab>();
-                    component?.SetSelected(eventType == component.levelEventType);
+                    InspectorTab comp = ((RectTransform)rect).gameObject.GetComponent<InspectorTab>();
+                    if (!(comp == null))
+                    {
+                        if (eventType == comp.levelEventType)
+                        {
+                            comp.SetSelected(true);
+                            comp.eventIndex = eventIndex;
+                            if (comp.cycleButtons != null)
+                            {
+                                comp.cycleButtons.text.text = string.Format("{0}/{1}", eventIndex + 1, num);
+                            }
+                        }
+                        else
+                        {
+                            comp.SetSelected(false);
+                        }
+                    }
                 }
                 goto end;
             end:
@@ -186,24 +239,28 @@ namespace EditorTabLib
                         rect.anchoredPosition = new Vector2(rect.anchoredPosition3D.x - 28, rect.anchoredPosition.y);
                     }
                 });
-                if (CustomTabManager.byType.TryGetValue((int)levelEventInfo.type, out CustomTabManager.CustomTab tab))
+
+                if (!CustomEventManager.byType.TryGetValue((int)levelEventInfo.type, out CustomEventManager.CustomEvent ev))
                 {
-                    if (tab.page != null)
-                    {
-                        VerticalLayoutGroup layoutGroup = __instance.content.GetComponent<VerticalLayoutGroup>();
-                        ContentSizeFitter sizeFitter = layoutGroup.GetOrAddComponent<ContentSizeFitter>();
-                        sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-                        sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                        layoutGroup.childControlHeight = false;
-                        layoutGroup.childControlWidth = false;
-                        __instance.content.gameObject.GetOrAddComponent<ScrollRect>().movementType = ScrollRect.MovementType.Unrestricted;
-                        __instance.content.gameObject.AddComponent(tab.page).Set("properties", __instance);
-                    } else if (tab.onFocused != null || tab.onUnFocused != null)
-                    {
-                        DefaultTabBehaviour page = __instance.content.gameObject.AddComponent<DefaultTabBehaviour>();
-                        page.onFocused = tab.onFocused;
-                        page.onUnFocused = tab.onUnFocused;
-                    }
+                    if (!CustomTabManager.byType.TryGetValue((int)levelEventInfo.type, out CustomTabManager.CustomTab t))
+                        return;
+                    ev = t;
+                }
+                if (ev is CustomTabManager.CustomTab tab && tab.page != null)
+                {
+                    VerticalLayoutGroup layoutGroup = __instance.content.GetComponent<VerticalLayoutGroup>();
+                    ContentSizeFitter sizeFitter = layoutGroup.GetOrAddComponent<ContentSizeFitter>();
+                    sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                    sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                    layoutGroup.childControlHeight = false;
+                    layoutGroup.childControlWidth = false;
+                    __instance.content.gameObject.GetOrAddComponent<ScrollRect>().movementType = ScrollRect.MovementType.Unrestricted;
+                    __instance.content.gameObject.AddComponent(tab.page).Set("properties", __instance);
+                } else if (ev.onFocused != null || ev.onUnFocused != null)
+                {
+                    DefaultTabBehaviour page = __instance.content.gameObject.AddComponent<DefaultTabBehaviour>();
+                    page.onFocused = ev.onFocused;
+                    page.onUnFocused = ev.onUnFocused;
                 }
             }
         }
@@ -214,10 +271,13 @@ namespace EditorTabLib
         {
             internal static void Postfix(InspectorTab __instance, bool selected)
             {
-                int type = (int)__instance.levelEventType;
-                if (!CustomTabManager.byType.ContainsKey(type))
-                    return;
-                CustomTabBehaviour behaviour = scnEditor.instance?.settingsPanel?.panelsList?.Find(panel => panel.levelEventType == __instance.levelEventType)?.content?.GetComponent<CustomTabBehaviour>();
+                if (!CustomEventManager.byType.TryGetValue((int)__instance.levelEventType, out CustomEventManager.CustomEvent ev))
+                {
+                    if (!CustomTabManager.byType.TryGetValue((int)__instance.levelEventType, out CustomTabManager.CustomTab t))
+                        return;
+                    ev = t;
+                }
+                CustomTabBehaviour behaviour = __instance.panel.panelsList.Find(p => p.levelEventType == __instance.levelEventType)?.content.GetComponent<CustomTabBehaviour>();
                 if (selected)
                     behaviour?.OnFocused();
                 else if (__instance.icon?.color.a == 1)
@@ -270,7 +330,7 @@ namespace EditorTabLib
             internal static void Prefix(Dictionary<string, object> dict, out (bool, string) __state)
             {
                 string text = dict["type"] as string;
-                if (text.StartsWith("Enum:") && text.Length > 5 && typeof(Properties.Property_List.Dummy).Equals(Type.GetType(text.Substring(5))))
+                if (text.StartsWith("Enum:") && text.Length > 5 && typeof(Property_List.Dummy).Equals(Type.GetType(text.Substring(5))))
                 {
                     __state = (true, dict["default"] as string);
                     dict.Remove("default");
@@ -292,7 +352,7 @@ namespace EditorTabLib
         {
             internal static bool Prefix(TweakableDropdownItem __instance, ref string __result)
             {
-                if (__instance.localizeValue && __instance.dropdown.transform.parent.GetComponent<PropertyControl_Toggle>().propertyInfo.enumType.Equals(typeof(Properties.Property_List.Dummy)))
+                if (__instance.localizeValue && __instance.dropdown.transform.parent.GetComponent<PropertyControl_Toggle>().propertyInfo.enumType.Equals(typeof(Property_List.Dummy)))
                 {
                     __result = RDStringEx.GetOrOrigin(__instance.value);
                     return false;
@@ -313,7 +373,7 @@ namespace EditorTabLib
                     if (type != null || (type = Type.GetType(enumTypeString))?.Assembly == typeof(ADOBase).Assembly)
                         enumTypeString = type.FullName;
                 }
-                if (typeof(Properties.Property_List.Dummy).Equals(__instance.propertyInfo.enumType))
+                if (typeof(Property_List.Dummy).Equals(__instance.propertyInfo.enumType))
                     enumVals = __instance.propertyInfo.unit.Split(';').ToList();
             }
             
@@ -337,7 +397,7 @@ namespace EditorTabLib
                         codes.Add(new CodeInstruction(OpCodes.Ldarg_0).WithLabels(code.ExtractLabels()));
                         codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")));
                         codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
-                        codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Properties.Property_List.Dummy)));
+                        codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Property_List.Dummy)));
                         codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Type), "GetTypeFromHandle")));
                         codes.Add(new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "Equals", new Type[] { typeof(Type) })));
                         codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
@@ -378,7 +438,7 @@ namespace EditorTabLib
                             codes.Add(new CodeInstruction(OpCodes.Ldarg_0));
                             codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")));
                             codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
-                            codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Properties.Property_List.Dummy)));
+                            codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Property_List.Dummy)));
                             codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Type), "GetTypeFromHandle")));
                             codes.Add(new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "Equals", new Type[] { typeof(Type) })));
                             codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
@@ -398,6 +458,7 @@ namespace EditorTabLib
             }
         }
 
+        // 이 타일 / 첫 타일 / 끝 타일 버튼 숨기기
         [HarmonyPatch(typeof(PropertyControl_Tile), "Setup")]
         public static class SetupPatch
         {
@@ -412,6 +473,40 @@ namespace EditorTabLib
                     if ((i & Property_Tile.END) != 0)
                         __instance.buttonLastTile.gameObject.SetActive(false);
                 }
+            }
+        }
+
+        //[HarmonyPatch]
+        internal static class GetEnumNamePatch
+        {
+            public static MethodInfo TargetMethod()
+            {
+                return AccessTools.Method(Type.GetType("System.RuntimeType"), "GetEnumName");
+            }
+
+            public static bool Prefix(Type __instance, object value, ref string __result)
+            {
+                if (value == null)
+                    return true;
+                if (__instance == typeof(LevelEventType))
+                {
+                    var index = CustomEventManager.let_valuesAndNames.Get<ulong[]>("Values").ToList().IndexOf(Convert.ToUInt64(value));
+                    if (index >= 0)
+                        __result = CustomEventManager.let_valuesAndNames.Get<string[]>("Names")[index];
+                    else
+                        __result = null;
+                    return false;
+                }
+                else if (__instance == typeof(LevelEventCategory))
+                {
+                    var index = CustomEventManager.lec_valuesAndNames.Get<ulong[]>("Values").ToList().IndexOf(Convert.ToUInt64(value));
+                    if (index >= 0)
+                        __result = CustomEventManager.lec_valuesAndNames.Get<string[]>("Names")[index];
+                    else
+                        __result = null;
+                    return false;
+                }
+                return true;
             }
         }
 
@@ -453,9 +548,14 @@ namespace EditorTabLib
                         return;
                     LevelEvent e = ___propertiesPanel.inspectorPanel.selectedEvent;
                     object newVar = e[___propertyInfo.name];
-                    if (CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab tab)
-                        && tab.onChange != null
-                        && !tab.onChange.Invoke(e, ___propertyInfo.name, __state, newVar))
+
+                    if (!CustomEventManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomEventManager.CustomEvent ev))
+                    {
+                        if (!CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab t))
+                            return;
+                        ev = t;
+                    }
+                    if (ev.onChange != null && !ev.onChange.Invoke(e, ___propertyInfo.name, __state, newVar))
                     {
                         e[___propertyInfo.name] = __state;
                         e.UpdatePanel();
@@ -474,8 +574,13 @@ namespace EditorTabLib
 
                 internal static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo)
                 {
-                    if (!CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab tab)
-                        || tab.onChange == null)
+                    if (!CustomEventManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomEventManager.CustomEvent ev))
+                    {
+                        if (!CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab t))
+                            return;
+                        ev = t;
+                    }
+                    if (ev.onChange == null)
                         return;
                     TMP_InputField inputField = __instance.Get<TMP_InputField>("inputField");
                     object obj = typeof(UnityEventBase).Get("m_Calls", inputField.onEndEdit);
@@ -487,7 +592,7 @@ namespace EditorTabLib
                     {
                         LevelEvent e = ___propertiesPanel.inspectorPanel.selectedEvent;
                         object newVar = e[___propertyInfo.name];
-                        if (!tab.onChange.Invoke(e, ___propertyInfo.name, var, newVar))
+                        if (!ev.onChange.Invoke(e, ___propertyInfo.name, var, newVar))
                         {
                             e[___propertyInfo.name] = var;
                             e.UpdatePanel();

@@ -260,18 +260,10 @@ namespace EditorTabLib
             return Patches.InspectorPanelShowPanelPatch.saves.TryGetValue(type, out LevelEvent value) ? value : null;
         }
 
-        internal class CustomTab
+        internal class CustomTab : CustomEventManager.CustomEvent
         {
-            internal Sprite icon;
-            internal int type;
-            internal string name;
-            internal Dictionary<SystemLanguage, string> title;
             internal Type page;
             internal int index;
-            internal List<Dictionary<string, object>> properties;
-            internal Action onFocused;
-            internal Action onUnFocused;
-            internal Func<LevelEvent, string, object, object, bool> onChange;
             internal bool saveSetting;
             internal CustomTab()
             {

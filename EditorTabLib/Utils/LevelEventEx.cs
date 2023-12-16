@@ -6,7 +6,10 @@ namespace EditorTabLib.Utils
     {
         public static void UpdatePanel(this LevelEvent e)
         {
-            scnEditor.instance.settingsPanel.panelsList.Find(panel => panel.levelEventType == e.eventType).SetProperties(e);
+            if (e.eventType.IsSetting())
+                scnEditor.instance.settingsPanel.panelsList.Find(panel => panel.levelEventType == e.eventType).SetProperties(e);
+            else if (scnEditor.instance.levelEventsPanel.selectedEvent == e)
+                scnEditor.instance.levelEventsPanel.panelsList.Find(panel => panel.levelEventType == e.eventType).SetProperties(e);
         }
     }
 }

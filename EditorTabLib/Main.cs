@@ -2,7 +2,9 @@
 using EditorTabLib.Utils;
 using HarmonyLib;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Reflection.Emit;
 using TinyJson;
 using UnityEngine.Events;
 using UnityModManagerNet;
@@ -40,13 +42,12 @@ namespace EditorTabLib
         {
             if (!typeof(ADOStartup).Get<bool>("startup"))
                 return;
-            CustomTabManager.list.ForEach(tab =>
-            {
-                AddOrDeleteTab(tab, flag);
-            });
+            CustomEventManager.categories.ToList().ForEach(pair => GCS.eventCategoryIcons.Add((LevelEventCategory)pair.Key, pair.Value));
+            CustomEventManager.list.ForEach(ev => AddOrDeleteTab(ev, flag));
+            CustomTabManager.list.ForEach(tab => AddOrDeleteTab(tab, flag));
         }
 
-        internal static void AddOrDeleteTab(CustomTabManager.CustomTab tab, bool flag)
+        internal static void AddOrDeleteTab(CustomEventManager.CustomEvent ev, bool flag)
         {
             if (!typeof(ADOStartup).Get<bool>("startup"))
                 return;
@@ -54,14 +55,14 @@ namespace EditorTabLib
             {
                 LevelEventInfo levelEventInfo = new LevelEventInfo
                 {
-                    categories = new List<LevelEventCategory>(),
+                    categories = ev.categories ?? new List<LevelEventCategory>(),
                     executionTime = LevelEventExecutionTime.Special,
-                    name = tab.name,
+                    name = ev.name,
                     propertiesInfo = new Dictionary<string, ADOFAI.PropertyInfo>(),
-                    type = (LevelEventType)tab.type
+                    type = (LevelEventType)ev.type
                 };
-                if (tab.properties != null)
-                    foreach (var dictionary in tab.properties)
+                if (ev.properties != null)
+                    foreach (var dictionary in ev.properties)
                     {
                         ADOFAI.PropertyInfo propertyInfo = new ADOFAI.PropertyInfo(dictionary, levelEventInfo);
                         if (dictionary.TryGetValue("type", out object obj) && obj is string str && str == "Export" && dictionary.TryGetValue("default", out obj) && obj is UnityAction action)
@@ -69,14 +70,20 @@ namespace EditorTabLib
                         propertyInfo.order = 0;
                         levelEventInfo.propertiesInfo.Add(propertyInfo.name, propertyInfo);
                     }
-                GCS.levelEventTypeString[(LevelEventType)tab.type] = tab.name;
-                GCS.levelEventIcons[(LevelEventType)tab.type] = tab.icon;
-                GCS.settingsInfo[tab.name] = levelEventInfo;
+                GCS.levelEventTypeString[(LevelEventType)ev.type] = ev.name;
+                GCS.levelEventIcons[(LevelEventType)ev.type] = ev.icon;
+                if (ev is CustomTabManager.CustomTab)
+                    GCS.settingsInfo[ev.name] = levelEventInfo;
+                else
+                {
+                    GCS.levelEventsInfo[ev.name] = levelEventInfo;
+                }
             } else
             {
-                GCS.levelEventTypeString.Remove((LevelEventType)tab.type);
-                GCS.levelEventIcons.Remove((LevelEventType)tab.type);
-                GCS.settingsInfo.Remove(tab.name);
+                GCS.levelEventTypeString.Remove((LevelEventType)ev.type);
+                GCS.levelEventIcons.Remove((LevelEventType)ev.type);
+                GCS.settingsInfo.Remove(ev.name);
+                GCS.levelEventsInfo.Remove(ev.name);
             }
         }
     }
