@@ -38,7 +38,7 @@ namespace EditorTabLib
 
         internal static void AddOrDeleteAllTabs(bool flag)
         {
-            if (!typeof(ADOStartup).Get<bool>("startup"))
+            if (GCS.levelEventsInfo == null)
                 return;
             CustomTabManager.list.ForEach(tab =>
             {
@@ -48,7 +48,7 @@ namespace EditorTabLib
 
         internal static void AddOrDeleteTab(CustomTabManager.CustomTab tab, bool flag)
         {
-            if (!typeof(ADOStartup).Get<bool>("startup"))
+            if (GCS.levelEventsInfo == null)
                 return;
             if (flag)
             {

@@ -345,7 +345,7 @@ namespace EditorTabLib
         }
 
         // Property_List 관련 기능
-        [HarmonyPatch(typeof(PropertyControl_Toggle), "SelectVar")]
+        //[HarmonyPatch(typeof(PropertyControl_Toggle), "SelectVar")]
         internal static class PropertyControl_ToggleSelectVarPatch
         {
             internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -372,7 +372,8 @@ namespace EditorTabLib
                             codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
                             codes.Add(new CodeInstruction(OpCodes.Ldarg_1));
                             codes.Add(new CodeInstruction(OpCodes.Br, label2));
-                            codes.Add(new CodeInstruction(OpCodes.Ldloc_2).WithLabels(label1));
+                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")).WithLabels(label1));
+                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
                             codes.Add(new CodeInstruction(OpCodes.Ldarg_1));
                             codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Enum), "Parse", new Type[] { typeof(Type), typeof(string) })));
                             codes.Add(nextCode.WithLabels(label2));
