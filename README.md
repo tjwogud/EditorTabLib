@@ -134,7 +134,9 @@ public static class Main
         else
         {
             harmony.UnpatchAll(modEntry.Info.Id);
-            CustomTabManager.DeleteTab(500);
+            CustomTabManager.DeleteTab(900);
+            CustomTabManager.DeleteTab(901);
+            CustomTabManager.DeleteTab(902);
         }
         return true;
     }
