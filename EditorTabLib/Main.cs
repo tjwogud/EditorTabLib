@@ -1,9 +1,11 @@
 ﻿using ADOFAI;
 using EditorTabLib.Utils;
 using HarmonyLib;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using TinyJson;
+using UnityEngine;
 using UnityEngine.Events;
 using UnityModManagerNet;
 
@@ -50,6 +52,18 @@ namespace EditorTabLib
         {
             if (GCS.levelEventsInfo == null)
                 return;
+            if (GCS.levelEventIcons == null)
+            {
+                GCS.levelEventIcons = new Dictionary<LevelEventType, Sprite>();
+                foreach (object obj in Enum.GetValues(typeof(LevelEventType)))
+                {
+                    Sprite sprite = Resources.Load<Sprite>("LevelEditor/LevelEvents/" + obj.ToString());
+                    if (sprite != null)
+                    {
+                        GCS.levelEventIcons.Add((LevelEventType)obj, sprite);
+                    }
+                }
+            }
             if (flag)
             {
                 LevelEventInfo levelEventInfo = new LevelEventInfo
