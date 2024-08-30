@@ -1,5 +1,4 @@
-﻿using ADOFAI;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace EditorTabLib.Properties
 {

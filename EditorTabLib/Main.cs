@@ -4,7 +4,6 @@ using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using TinyJson;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityModManagerNet;
@@ -20,6 +19,7 @@ namespace EditorTabLib
         {
             Logger = modEntry.Logger;
             modEntry.OnToggle = OnToggle;
+            ADOFAITypes.InitializeTypes();
         }
 
         private static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)

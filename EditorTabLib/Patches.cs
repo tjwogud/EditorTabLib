@@ -9,12 +9,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
-using TinyJson;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
-using UnityModManagerNet;
 
 namespace EditorTabLib
 {
@@ -214,24 +212,32 @@ namespace EditorTabLib
         }
 
         // 커스텀 탭의 버튼에 리스너 추가, 버튼 텍스트 설정
-        [HarmonyPatch(typeof(PropertyControl), "Setup")]
+        [HarmonyPatch]
         internal static class PropertyControl_ExportSetupPatch
         {
-            internal static void Postfix(PropertyControl_Export __instance)
+            internal static MethodBase TargetMethod()
             {
-                if (!(__instance.propertyInfo.value_default is UnityAction action))
+                return AccessTools.Method(ADOFAITypes.control, "Setup");
+            }
+
+            internal static void Postfix(object __instance)
+            {
+                ADOFAI.PropertyInfo info = __instance.Get<ADOFAI.PropertyInfo>("propertyInfo");
+                if (!(info.value_default is UnityAction action))
                     return;
-                __instance.exportButton.onClick.RemoveAllListeners();
-                __instance.exportButton.onClick.AddListener(action);
-                if (__instance.propertyInfo.customLocalizationKey == null)
+                Button button = __instance.Get<Button>("exportButton");
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(action);
+                object text = __instance.Get("buttonText");
+                if (info.customLocalizationKey == null)
                 {
-                    string str = "editor." + __instance.propertyInfo.levelEventInfo.name + "." + __instance.propertyInfo.name;
-                    __instance.buttonText.text = RDString.GetWithCheck(str, out bool flag, null);
+                    string str = "editor." + info.levelEventInfo.name + "." + info.name;
+                    text.Set("text", RDString.GetWithCheck(str, out bool flag, null));
                     if (!flag)
-                        __instance.buttonText.text = RDString.GetWithCheck("editor." + __instance.propertyInfo.name, out _, null);
+                        text.Set("text", RDString.GetWithCheck("editor." + info.name, out _, null));
                 }
                 else
-                    __instance.buttonText.text = (__instance.propertyInfo.customLocalizationKey == "") ? "" : RDString.Get(__instance.propertyInfo.customLocalizationKey, null);
+                    text.Set("text", (info.customLocalizationKey == "") ? "" : RDString.Get(info.customLocalizationKey, null));
             }
         }
 
@@ -258,7 +264,7 @@ namespace EditorTabLib
             internal static void Prefix(Dictionary<string, object> dict, out (bool, string) __state)
             {
                 string text = dict["type"] as string;
-                if (text.StartsWith("Enum:") && text.Length > 5 && typeof(Properties.Property_List.Dummy).Equals(Type.GetType(text.Substring(5))))
+                if (text.StartsWith("Enum:") && text.Length > 5 && typeof(Property_List.Dummy).Equals(Type.GetType(text.Substring(5))))
                 {
                     __state = (true, dict["default"] as string);
                     dict.Remove("default");
@@ -280,7 +286,7 @@ namespace EditorTabLib
         {
             internal static bool Prefix(TweakableDropdownItem __instance, ref string __result)
             {
-                if (__instance.localizeValue && __instance.dropdown.transform.parent.GetComponent<PropertyControl_Toggle>().propertyInfo.enumType.Equals(typeof(Properties.Property_List.Dummy)))
+                if (__instance.localizeValue && __instance.dropdown.transform.parent?.GetComponent(ADOFAITypes.controls["Toggle"])?.Get<ADOFAI.PropertyInfo>("propertyInfo").enumType is Type t && t.Equals(typeof(Property_List.Dummy)))
                 {
                     __result = RDStringEx.GetOrOrigin(__instance.value);
                     return false;
@@ -290,10 +296,15 @@ namespace EditorTabLib
         }
 
         // Property_List 관련 기능
-        [HarmonyPatch(typeof(PropertyControl_Toggle), "EnumSetup")]
+        [HarmonyPatch]
         internal static class PropertyControl_ToggleEnumSetupPatch
         {
-            internal static void Prefix(PropertyControl_Toggle __instance, ref string enumTypeString, ref List<string> enumVals)
+            internal static MethodBase TargetMethod()
+            {
+                return AccessTools.Method(ADOFAITypes.controls["Toggle"], "EnumSetup");
+            }
+
+            internal static void Prefix(object __instance, ref string enumTypeString, ref List<string> enumVals)
             {
                 if (enumTypeString != null)
                 {
@@ -301,8 +312,9 @@ namespace EditorTabLib
                     if (type != null || (type = Type.GetType(enumTypeString))?.Assembly == typeof(ADOBase).Assembly)
                         enumTypeString = type.FullName;
                 }
-                if (typeof(Properties.Property_List.Dummy).Equals(__instance.propertyInfo.enumType))
-                    enumVals = __instance.propertyInfo.unit.Split(';').ToList();
+                ADOFAI.PropertyInfo info = __instance.Get<ADOFAI.PropertyInfo>("propertyInfo");
+                if (typeof(Property_List.Dummy).Equals(info.enumType))
+                    enumVals = info.unit.Split(';').ToList();
             }
             
             internal static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
@@ -323,9 +335,9 @@ namespace EditorTabLib
                         Label label1 = generator.DefineLabel();
                         Label label2 = (Label)instructions.ElementAt(i - 1).operand;
                         codes.Add(new CodeInstruction(OpCodes.Ldarg_0).WithLabels(code.ExtractLabels()));
-                        codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")));
+                        codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(ADOFAITypes.control, "propertyInfo")));
                         codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
-                        codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Properties.Property_List.Dummy)));
+                        codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Property_List.Dummy)));
                         codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Type), "GetTypeFromHandle")));
                         codes.Add(new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "Equals", new Type[] { typeof(Type) })));
                         codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
@@ -364,15 +376,15 @@ namespace EditorTabLib
                             Label label1 = generator.DefineLabel();
                             Label label2 = generator.DefineLabel();
                             codes.Add(new CodeInstruction(OpCodes.Ldarg_0));
-                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")));
+                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(ADOFAITypes.control, "propertyInfo")));
                             codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
-                            codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Properties.Property_List.Dummy)));
+                            codes.Add(new CodeInstruction(OpCodes.Ldtoken, typeof(Property_List.Dummy)));
                             codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Type), "GetTypeFromHandle")));
                             codes.Add(new CodeInstruction(OpCodes.Callvirt, AccessTools.Method(typeof(Type), "Equals", new Type[] { typeof(Type) })));
                             codes.Add(new CodeInstruction(OpCodes.Brfalse, label1));
                             codes.Add(new CodeInstruction(OpCodes.Ldarg_1));
                             codes.Add(new CodeInstruction(OpCodes.Br, label2));
-                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(PropertyControl), "propertyInfo")).WithLabels(label1));
+                            codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(ADOFAITypes.control, "propertyInfo")).WithLabels(label1));
                             codes.Add(new CodeInstruction(OpCodes.Ldfld, AccessTools.Field(typeof(ADOFAI.PropertyInfo), "enumType")));
                             codes.Add(new CodeInstruction(OpCodes.Ldarg_1));
                             codes.Add(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(Enum), "Parse", new Type[] { typeof(Type), typeof(string) })));
@@ -387,19 +399,24 @@ namespace EditorTabLib
             }
         }
 
-        [HarmonyPatch(typeof(PropertyControl_Tile), "Setup")]
+        [HarmonyPatch]
         public static class SetupPatch
         {
-            public static void Postfix(PropertyControl_Tile __instance)
+            internal static MethodBase TargetMethod()
             {
-                if (__instance.propertyInfo.dict.TryGetValue("hideButtons", out object value) && value is int i)
+                return AccessTools.Method(ADOFAITypes.controls["Tile"], "Setup");
+            }
+
+            public static void Postfix(object __instance)
+            {
+                if (__instance.Get<ADOFAI.PropertyInfo>("propertyInfo").dict.TryGetValue("hideButtons", out object value) && value is int i)
                 {
                     if ((i & Property_Tile.THIS_TILE) != 0)
-                        __instance.buttonThisTile.gameObject.SetActive(false);
+                        __instance.Get<MonoBehaviour>("buttonThisTile").gameObject.SetActive(false);
                     if ((i & Property_Tile.START) != 0)
-                        __instance.buttonFirstTile.gameObject.SetActive(false);
+                        __instance.Get<MonoBehaviour>("buttonFirstTile").gameObject.SetActive(false);
                     if ((i & Property_Tile.END) != 0)
-                        __instance.buttonLastTile.gameObject.SetActive(false);
+                        __instance.Get<MonoBehaviour>("buttonLastTile").gameObject.SetActive(false);
                 }
             }
         }
@@ -408,7 +425,7 @@ namespace EditorTabLib
         internal static class ValueChangePatches
         {
             // Bool: SetValue - bool flag
-            // Color: OnEndEdit - string s
+            // Color: OnEndEdit|OnChange - string s
             // File: ProcessFile - string newFilename
             // LongText: Add Listener On Setup
             // Rating: SetInt - int var
@@ -421,24 +438,24 @@ namespace EditorTabLib
             {
                 internal static IEnumerable<MethodBase> TargetMethods()
                 {
-                    yield return AccessTools.Method(typeof(PropertyControl_Bool), "SetValue");
-                    yield return AccessTools.Method(typeof(PropertyControl_Color), "OnEndEdit");
-                    yield return AccessTools.Method(typeof(PropertyControl_File), "ProcessFile");
-                    yield return AccessTools.Method(typeof(PropertyControl_Rating), "SetInt");
-                    yield return AccessTools.Method(typeof(PropertyControl_Toggle), "SelectVar");
-                    yield return AccessTools.Method(typeof(PropertyControl_Vector2), "SetVectorVals");
+                    yield return AccessTools.Method(ADOFAITypes.controls["Bool"], "SetValue");
+                    yield return AccessTools.Method(ADOFAITypes.controls["Color"], "OnEndEdit") ?? AccessTools.Method(ADOFAITypes.controls["Color"], "OnChange");
+                    yield return AccessTools.Method(ADOFAITypes.controls["File"], "ProcessFile");
+                    yield return AccessTools.Method(ADOFAITypes.controls["Rating"], "SetInt");
+                    yield return AccessTools.Method(ADOFAITypes.controls["Toggle"], "SelectVar");
+                    yield return AccessTools.Method(ADOFAITypes.controls["Vector2"], "SetVectorVals");
                 }
 
-                internal static void Prefix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, ref object __state)
+                internal static void Prefix(object __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, ref object __state)
                 {
-                    if (__instance is PropertyControl_Toggle control && control.settingText)
+                    if (__instance.Get<bool>("settingText"))
                         return;
                     ___propertiesPanel.inspectorPanel.selectedEvent.data.TryGetValue(___propertyInfo.name, out __state);
                 }
 
-                internal static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, object __state)
+                internal static void Postfix(object __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, object __state)
                 {
-                    if (__instance is PropertyControl_Toggle control && control.settingText)
+                    if (__instance.Get<bool>("settingText"))
                         return;
                     LevelEvent e = ___propertiesPanel.inspectorPanel.selectedEvent;
                     object newVar = e[___propertyInfo.name];
@@ -457,11 +474,11 @@ namespace EditorTabLib
             {
                 internal static IEnumerable<MethodBase> TargetMethods()
                 {
-                    yield return AccessTools.Method(typeof(PropertyControl_LongText), "Setup");
-                    yield return AccessTools.Method(typeof(PropertyControl_Text), "Setup");
+                    yield return AccessTools.Method(ADOFAITypes.controls["LongText"], "Setup");
+                    yield return AccessTools.Method(ADOFAITypes.controls["Text"], "Setup");
                 }
 
-                internal static void Postfix(PropertyControl __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo)
+                internal static void Postfix(object __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo)
                 {
                     if (!CustomTabManager.byType.TryGetValue((int)___propertyInfo.levelEventInfo.type, out CustomTabManager.CustomTab tab)
                         || tab.onChange == null)
