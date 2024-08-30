@@ -82,6 +82,7 @@ namespace EditorTabLib
         }
 
         // NullReferenceException 방지
+        // NullReferenceException 방지
         [HarmonyPatch(typeof(scnEditor), "GetSelectedFloorEvents")]
         internal static class scnEditorGetSelectedFloorEventsPatch
         {
@@ -448,14 +449,14 @@ namespace EditorTabLib
 
                 internal static void Prefix(object __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, ref object __state)
                 {
-                    if (__instance.Get<bool>("settingText"))
+                    if (__instance.GetType().Equals(ADOFAITypes.controls["Toggle"]) && __instance.Get<bool>("settingText"))
                         return;
                     ___propertiesPanel.inspectorPanel.selectedEvent.data.TryGetValue(___propertyInfo.name, out __state);
                 }
 
                 internal static void Postfix(object __instance, PropertiesPanel ___propertiesPanel, ADOFAI.PropertyInfo ___propertyInfo, object __state)
                 {
-                    if (__instance.Get<bool>("settingText"))
+                    if (__instance.GetType().Equals(ADOFAITypes.controls["Toggle"]) && __instance.Get<bool>("settingText"))
                         return;
                     LevelEvent e = ___propertiesPanel.inspectorPanel.selectedEvent;
                     object newVar = e[___propertyInfo.name];
@@ -504,6 +505,16 @@ namespace EditorTabLib
                     runtime.Method("Insert", new object[] { 0, prefixObj }, new Type[] { typeof(int), Reflections.GetType("UnityEngine.Events.BaseInvokableCall") });
                     runtime.Method("Add", new object[] { postfixObj }, new Type[] { Reflections.GetType("UnityEngine.Events.BaseInvokableCall") });
                     obj.Set("m_NeedsUpdate", true);
+                }
+            }
+
+            [HarmonyPatch(typeof(PropertiesPanel), "UpdateEnabledButton")]
+            internal static class EnabledButtonPatch
+            {
+                internal static void Postfix(ADOFAI.Property property, bool disabled)
+                {
+                    if (!disabled)
+                        property.enabledButton.GetComponent<RectTransform>().offsetMax = new Vector2(-30, 0);
                 }
             }
         }
