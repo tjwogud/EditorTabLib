@@ -513,7 +513,7 @@ namespace EditorTabLib
             {
                 internal static void Postfix(ADOFAI.Property property, bool disabled)
                 {
-                    if (!disabled)
+                    if (!disabled && property.helpButton.gameObject.activeInHierarchy)
                         property.enabledButton.GetComponent<RectTransform>().offsetMax = new Vector2(-30, 0);
                 }
             }
