@@ -11,8 +11,9 @@ namespace EditorTabLib.Properties
         public Property_Color(string name, Color? value_default = null, bool usesAlpha = true, string key = null, bool canBeDisabled = false, bool startEnabled = false, Dictionary<string, string> enableIf = null, Dictionary<string, string> disableIf = null)
             : base(name, key, canBeDisabled, startEnabled, enableIf, disableIf)
         {
-            this.value_default = ToHex(value_default.GetValueOrDefault(Color.white), usesAlpha);
-            this.usesAlpha = usesAlpha;
+            data["type"] = "Color";
+            data["default"] = ToHex(value_default.GetValueOrDefault(Color.white), usesAlpha);
+            data["usesAlpha"] = usesAlpha;
         }
 
         private static string ToHex(Color c, bool alpha)
@@ -25,22 +26,6 @@ namespace EditorTabLib.Properties
         private static byte ToByte(float f)
         {
             return (byte)(Mathf.Clamp01(f) * 255f);
-        }
-
-        public override Dictionary<string, object> ToData()
-        {
-            return new Dictionary<string, object>()
-                    {
-                        { "name", name },
-                        { "type", "Color" },
-                        { "default", value_default },
-                        { "usesAlpha", usesAlpha },
-                        { "canBeDisabled", canBeDisabled },
-                        { "startEnabled", startEnabled },
-                        { "enableIf", enableIf },
-                        { "disableIf", disableIf },
-                        { "key", key }
-                    };
         }
     }
 }

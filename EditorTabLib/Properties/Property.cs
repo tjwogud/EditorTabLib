@@ -11,6 +11,7 @@ namespace EditorTabLib.Properties
         protected readonly bool startEnabled;
         protected readonly List<object> enableIf;
         protected readonly List<object> disableIf;
+        protected readonly Dictionary<string, object> data;
 
         internal Property() {
         }
@@ -23,8 +24,29 @@ namespace EditorTabLib.Properties
             this.startEnabled = startEnabled;
             this.enableIf = enableIf?.SelectMany(pair => new object[] { pair.Key, pair.Value }).ToList() ?? new List<object>();
             this.disableIf = disableIf?.SelectMany(pair => new object[] { pair.Key, pair.Value }).ToList() ?? new List<object>();
+            data = new Dictionary<string, object>();
         }
 
-        public abstract Dictionary<string, object> ToData();
+        public Property With(string key, object value)
+        {
+            data[key] = value;
+            return this;
+        }
+
+        public virtual Dictionary<string, object> ToData()
+        {
+            var data = new Dictionary<string, object>()
+            {
+                { "name", name },
+                { "canBeDisabled", canBeDisabled },
+                { "startEnabled", startEnabled },
+                { "enableIf", enableIf },
+                { "disableIf", disableIf },
+                { "key", key }
+            };
+            foreach (var pair in this.data)
+                data.Add(pair.Key, pair.Value);
+            return data;
+        }
     }
 }
